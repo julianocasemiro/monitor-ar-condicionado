@@ -1,0 +1,137 @@
+# =============================================================================
+# config.yaml — TODA a regra de negócio do bot mora aqui.
+# Você muda o comportamento do bot editando ESTE arquivo, sem mexer no Python.
+# Segredos (token do Telegram, CEP, URL do calendário) NÃO ficam aqui:
+# ficam nos "Secrets" do GitHub (veja docs/GUIA_PASSO_A_PASSO.md, Etapa 6).
+# =============================================================================
+
+criterios:
+  marcas:                       # marca -> palavras que identificam a marca no título
+    gree:  ["gree"]
+    midea: ["midea", "springer midea"]
+    elgin: ["elgin"]
+  capacidades_btu: [9000, 12000]  # só aceita estes tamanhos
+  exigir_inverter: true
+  exigir_so_frio: true           # descarta "quente e frio", "q/f" etc.
+  voltagem: 220                  # descarta anúncios que digam 110V/127V sem citar 220V
+  preco_maximo: 2500.00          # teto SÓ do aparelho, em reais
+  # Regra do 12k: seu quarto (3 m x 2,8 m = 8,4 m²) pede 9.000 BTU.
+  # "somente_se_mais_barato_que_9k" -> só avisa 12k se ele custar MENOS que o melhor 9k da rodada.
+  # Troque para "sempre" se quiser ver todo 12k abaixo do teto.
+  regra_12k: "somente_se_mais_barato_que_9k"
+  exigir_frete_gratis: true      # oferta com frete PAGO confirmado é descartada;
+                                 # frete "não verificado" passa, mas com aviso ⚠️
+  # Palavras que indicam peça/acessório, e não o aparelho completo
+  palavras_proibidas: ["kit instalacao", "kit de instalacao", "suporte", "controle remoto",
+                       "placa", "capacitor", "somente evaporadora", "somente condensadora",
+                       "capa protetora", "usado", "recondicionado", "vitrine"]
+  # Códigos de fábrica que indicam versão QUENTE/FRIO (a regra de texto às vezes falha)
+  # GWH = Gree quente/frio | HJQ = Elgin quente/frio | EZVQ = Midea quente/frio
+  codigos_quente_frio: ["gwh", "hjq", "ezvq"]
+
+alertas:
+  # "Diferença grande" entre lojas para o MESMO modelo -> Telegram 🔥 + evento no Google Agenda
+  diferenca_percentual_minima: 15   # (mais caro - mais barato) / mais caro >= 15%
+  diferenca_reais_minima: 250       # ...E a diferença precisa ser de pelo menos R$ 250
+  # Queda em relação ao histórico da MESMA URL -> só Telegram
+  queda_percentual_minima: 8
+  criar_evento_agenda: true
+
+educacao_http:                   # regras de "bom cidadão" na internet (ver docs/DECISOES.md)
+  intervalo_segundos: 10         # espera mínima entre 2 requisições ao MESMO site
+  timeout_segundos: 25
+  max_requisicoes_por_site: 12   # teto por execução, por site
+  respeitar_robots_txt: true
+
+# Cada modelo tem códigos de fábrica. Se o título/descrição de uma oferta contiver
+# QUALQUER um dos códigos, a oferta é considerada "o mesmo produto" -> permite comparar
+# o preço do mesmo aparelho entre lojas diferentes (base do alerta de diferença grande).
+# Escreva os códigos em minúsculas e SEM o prefixo "45" que algumas lojas colocam.
+modelos:
+  - id: gree-gtop-auto-9k-frio
+    nome: "Gree G-Top Auto 9.000 BTUs Inverter Só Frio"
+    btu: 9000
+    codigos: ["gwc09atb-d6dna1a"]
+  - id: gree-9k-frio-gwc09ata
+    nome: "Gree Inverter 9.000 BTUs Frio (GWC09ATA)"
+    btu: 9000
+    codigos: ["gwc09ata-d6dna2c"]
+  - id: gree-gside-12k-frio
+    nome: "Gree G-Side 12.000 BTUs Inverter Frio"
+    btu: 12000
+    codigos: ["gwc12atcxb-d6dna3c"]
+  - id: midea-ai-ecomaster-9k-frio-vca
+    nome: "Midea AI Ecomaster 9.000 BTUs Frio (42EZVCA09M5)"
+    btu: 9000
+    codigos: ["42ezvca09m5", "38ezvca09m5"]
+  - id: midea-ai-ecomaster-9k-frio-vcc
+    nome: "Midea AI Ecomaster 9.000 BTUs Frio (42EZVCC09M5)"
+    btu: 9000
+    codigos: ["42ezvcc09m5", "38ezvcc09m5"]
+  - id: midea-ai-ecomaster-pro-9k-frio
+    nome: "Midea AI Ecomaster Pro 9.000 BTUs Frio"
+    btu: 9000
+    codigos: ["42ezvcb09m5", "38ezvcb09m5"]
+  - id: midea-ai-airvolution-9k-frio
+    nome: "Midea AI Airvolution 9.000 BTUs Frio"
+    btu: 9000
+    codigos: ["42efvca09m5", "38tavca09m5"]
+  - id: elgin-eco-ii-9k-frio-ia
+    nome: "Elgin Eco II 9.000 BTUs Frio (HJFI09C2IA)"
+    btu: 9000
+    codigos: ["hjfi09c2ia", "hjfe09c2na"]
+  - id: elgin-eco-ii-9k-frio-wb
+    nome: "Elgin Eco II 9.000 BTUs Frio (HJFI09C2WB)"
+    btu: 9000
+    codigos: ["hjfi09c2wb", "hjfe09c2cb"]
+  - id: elgin-eco-ii-wifi-9k-frio-wg
+    nome: "Elgin Eco Inverter II Wi-Fi 9.000 BTUs Frio (HJFC09C2WWGCG)"
+    btu: 9000
+    codigos: ["hjfc09c2wwgcg", "hjfi09c2wg", "hjfe09c2cg"]
+  - id: elgin-eco-ii-connect-9k-frio-wc
+    nome: "Elgin Eco II Connect 9.000 BTUs Frio (HJFI09C2WC)"
+    btu: 9000
+    codigos: ["hjfi09c2wc", "hjfe09c2cc"]
+  - id: elgin-eco-star-9k-frio
+    nome: "Elgin Eco Star 9.000 BTUs Frio"
+    btu: 9000
+    codigos: ["hsfi09c2ia", "hsfe09c2na"]
+  - id: elgin-eco-life-9k-frio
+    nome: "Elgin Eco Life 9.000 BTUs Frio"
+    btu: 9000
+    codigos: ["hxfi09b2fa", "hxfe09b2na"]
+
+# Lojas que o bot consulta pela busca pública de catálogo da plataforma VTEX.
+# "candidata" = eu NÃO consegui confirmar daqui que a loja roda em VTEX.
+# Rode o modo diagnóstico (Etapa 8 do guia) e ele diz quais funcionam de verdade.
+lojas_vtex:
+  - nome: "Midea (loja oficial)"
+    dominio: "www.midea.com.br"
+  - nome: "WebContinental"
+    dominio: "www.webcontinental.com.br"
+  - nome: "Frigelar"
+    dominio: "www.frigelar.com.br"
+  - nome: "Dufrio"
+    dominio: "www.dufrio.com.br"
+  - nome: "Centralar"
+    dominio: "www.centralar.com.br"
+  - nome: "Leveros"
+    dominio: "www.leveros.com.br"
+  - nome: "Fast Shop"
+    dominio: "site.fastshop.com.br"
+
+# Termos buscados em CADA loja VTEX (o filtro fino é feito depois, no Python)
+termos_busca: ["ar condicionado gree inverter frio",
+               "ar condicionado midea inverter frio",
+               "ar condicionado elgin inverter frio"]
+
+# URLs de páginas de produto que você quer vigiar diretamente (qualquer loja).
+# O bot lê os dados estruturados (JSON-LD, padrão schema.org) da página.
+# Lojas com proteção anti-robô forte provavelmente vão bloquear — e o bot RESPEITA o bloqueio.
+urls_vigiadas: []
+#  - loja: "Nome da loja"
+#    url: "https://www.exemplo.com.br/produto-x/p"
+
+# Lojas que incluem instalação no preço (preencha quando encontrar uma).
+# Ofertas dessas lojas passam mesmo sem frete grátis confirmado.
+lojas_com_instalacao_inclusa: []

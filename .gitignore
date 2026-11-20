@@ -1,0 +1,9 @@
+# Ambiente virtual do Python (pasta criada pelo "python -m venv .venv")
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+# NUNCA versionar segredos locais
+.env
+*.secret

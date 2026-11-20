@@ -1,0 +1,74 @@
+# =============================================================================
+# monitor.yml — roda o bot automaticamente nos servidores do GitHub.
+# Leia este arquivo junto com docs/GUIA_PASSO_A_PASSO.md (Etapa 7).
+# =============================================================================
+name: Monitor de preços
+
+on:
+  schedule:
+    # Cron em UTC. Fortaleza = UTC-3. 09:17 UTC = 06:17 em Fortaleza, etc.
+    # Minuto 17 de propósito: na virada da hora o GitHub fica mais carregado e atrasa.
+    - cron: "17 9,15,21 * * *"
+  workflow_dispatch:        # cria o botão "Run workflow" para rodar na mão
+    inputs:
+      modo:
+        description: "O que fazer nesta execução manual"
+        default: "normal"
+        type: choice
+        options: [normal, simular, diagnostico, testar_telegram, testar_agenda]
+
+permissions:
+  contents: write           # precisa escrever no repositório para salvar o histórico
+
+concurrency:                # nunca deixa duas execuções rodarem ao mesmo tempo
+  group: monitor-precos
+  cancel-in-progress: false
+
+jobs:
+  monitorar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Baixar o código do repositório
+        uses: actions/checkout@v6
+
+      - name: Instalar Python 3.12
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+
+      - name: Rodar o bot
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CEP_ENTREGA: ${{ secrets.CEP_ENTREGA }}
+          AGENDA_WEBHOOK_URL: ${{ secrets.AGENDA_WEBHOOK_URL }}
+          AGENDA_WEBHOOK_TOKEN: ${{ secrets.AGENDA_WEBHOOK_TOKEN }}
+          MODO: ${{ github.event.inputs.modo || 'normal' }}
+        run: |
+          case "$MODO" in
+            simular)     python -m bot.main --simular ;;
+            diagnostico) python -m bot.main --diagnostico ;;
+            testar_telegram) python -m bot.main --testar telegram ;;
+            testar_agenda)   python -m bot.main --testar agenda ;;
+            *)           python -m bot.main ;;
+          esac
+
+      - name: Salvar o histórico de preços no repositório
+        # Só salva em execução normal (agendada, ou manual no modo 'normal')
+        if: ${{ !github.event.inputs.modo || github.event.inputs.modo == 'normal' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Nada mudou no histórico."
+          else
+            git commit -m "chore(dados): atualiza histórico de preços"
+            git pull --rebase
+            git push
+          fi

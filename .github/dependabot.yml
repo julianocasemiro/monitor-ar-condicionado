@@ -1,0 +1,12 @@
+# Dependabot: o próprio GitHub abre pedidos de atualização quando sai versão nova
+# das Actions (checkout, setup-python) e das bibliotecas Python. Você só revisa e aceita.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"

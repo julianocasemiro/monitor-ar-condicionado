@@ -1,0 +1,3 @@
+# ruff.toml - configuracao do lint (ruff)
+# Declara a versao do Python do projeto: PC e GitHub Actions julgam pelas mesmas regras.
+target-version = "py312"

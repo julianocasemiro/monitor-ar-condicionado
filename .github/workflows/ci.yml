@@ -1,0 +1,29 @@
+# =============================================================================
+# ci.yml — "Integração Contínua": a cada push, verifica se o código continua correto.
+# Se um teste falhar, aparece um X vermelho no commit e você sabe ANTES do bot rodar.
+# =============================================================================
+name: CI
+
+on:
+  push:
+    paths-ignore: ["data/**"]   # commits do histórico não precisam rodar testes
+  pull_request:
+
+permissions:
+  contents: read                # CI só lê o código: princípio do menor privilégio
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - name: Lint (estilo e erros comuns)
+        run: ruff check bot tests
+      - name: Testes automáticos
+        run: python -m pytest -v

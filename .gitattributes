@@ -1,0 +1,2 @@
+# Padroniza o fim de linha: o repositorio guarda LF (padrao do Linux, onde o GitHub Actions roda)
+* text=auto eol=lf
