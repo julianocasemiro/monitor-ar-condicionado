@@ -1,4 +1,0 @@
-{"logisticsInfo":[{"itemIndex":0,"slas":[
-  {"id":"Normal","deliveryChannel":"delivery","price":0},
-  {"id":"Expressa","deliveryChannel":"delivery","price":4990},
-  {"id":"Retira","deliveryChannel":"pickup-in-point","price":0}]}]}

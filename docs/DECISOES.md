@@ -30,6 +30,9 @@
 
 ## ADR-002 — Fontes de dados: só dados estruturados e públicos
 
+> **Status: SUBSTITUÍDO pelo ADR-008** (20/11/2026). A busca VTEX não sobreviveu ao teste real.
+> Mantido aqui de propósito: o histórico de decisões mostra também o que deu errado e por quê.
+
 **Contexto.** O pedido original incluía "Google Shopping" e o Mercado Livre.
 
 **Decisão.** Duas fontes, ambas publicadas **de propósito** pelas lojas:
@@ -103,3 +106,45 @@
 **Decisão.** Cada modelo no `config.yaml` tem uma lista de códigos de fábrica (ex.: `42ezvca09m5`). Oferta cujo texto contém o código entra no grupo do modelo. Sem código ⇒ aparece no resumo, mas não participa do alerta de diferença.
 
 **Consequência.** Zero falso positivo de "mesmo produto"; em troca, a lista de códigos precisa de manutenção manual (instruções no guia).
+
+---
+
+## ADR-008 — De "buscar no catálogo" para "vigiar páginas de produto"
+
+**Contexto.** Primeiro diagnóstico real (20/11/2026), feito do PC de casa, com o bot identificado:
+
+| Loja | Resultado | Leitura |
+|---|---|---|
+| Centralar | `robots.txt` proíbe o caminho da busca | Recusa explícita; respeitada |
+| Midea | HTTP 400 `Bad Request! Scripts are not allowed!` (via CloudFront) | Recusa explícita a scripts na busca |
+| Frigelar | HTTP 200 com HTML (`id="oracle-cc"`) | Não é VTEX: roda em Oracle Commerce Cloud |
+| WebContinental, Dufrio, Leveros, Fast Shop | Mesma falha genérica | Busca indisponível para o bot |
+
+Teste seguinte, em **páginas de produto** (JSON-LD), usando o próprio cliente do bot:
+
+| Loja | Resultado |
+|---|---|
+| Midea | HTTP 200, JSON-LD OK (inclusive o status de estoque) |
+| Gazin | HTTP 200, JSON-LD OK |
+| KaBuM | HTTP 200, JSON-LD OK |
+| Fast Shop | HTTP 404 (URL antiga) — a confirmar com URL atual |
+| Ponto Frio | HTTP 403 — recusa; Casas Bahia/Extra (mesmo grupo) fora |
+
+**Decisão.** Remover a busca VTEX e a simulação de frete. O bot passa a **vigiar uma lista curada de
+páginas de produto** (`urls_vigiadas`), cada uma opcionalmente ligada a um `modelo`.
+
+**Por quê.** As lojas recusam *busca* automática, mas publicam páginas de produto com JSON-LD de
+propósito, para buscadores. Ler o que a loja publica para ser lido é o lado certo da linha do ADR-003.
+
+**Consequências.**
+- ✅ Funciona nas lojas que aceitam; código mais simples (menos uma fonte, menos um segredo — o CEP saiu).
+- ✅ Novo alerta **"voltou ao estoque"**: 2 de 3 páginas testadas estavam esgotadas; a volta ao
+  estoque é onde a promoção costuma aparecer.
+- ⚠️ O bot **não descobre** anúncios novos — a descoberta é humana (alertas de Google Shopping,
+  Promobit, Pelando) e a vigilância é automática.
+- ⚠️ Frete não é mais verificado automaticamente; toda oferta vem com "confira o frete".
+- ⚠️ O preço do JSON-LD é o da página (na Midea, conferido: o do cartão, R$ 2.188,42, contra
+  R$ 2.079 no Pix). A comparação entre lojas segue justa porque o critério é o mesmo.
+- ⚠️ Título genérico (ex.: "Ar Condicionado 9000 BTUs Inverter | Midea") não traz o código de
+  fábrica → o campo `modelo` na URL resolve, e o bot avisa se a página mostrar o código de OUTRO modelo.
+- 🔜 Descoberta automática e autorizada: API oficial do Mercado Livre (v2).

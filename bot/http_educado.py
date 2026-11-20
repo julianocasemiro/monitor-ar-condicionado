@@ -29,6 +29,11 @@ class SiteBloqueado(Exception):
     """O site recusou o bot. Tratamos como um 'não' educado e seguimos em frente."""
 
 
+class PaginaNaoEncontrada(Exception):
+    """HTTP 404/410: a URL não existe mais (produto removido ou endereço mudou).
+    NÃO é uma recusa do site: as outras páginas da mesma loja continuam sendo lidas."""
+
+
 class ClienteEducado:
     def __init__(self, cfg_http: dict):
         repo = os.getenv("GITHUB_REPOSITORY", "projeto-pessoal")
@@ -45,6 +50,7 @@ class ClienteEducado:
         self._contagem = {}           # dominio -> nº de requisições nesta execução
         self._robots = {}             # dominio -> RobotFileParser (cache)
         self.bloqueados = {}          # dominio -> motivo
+        self.ultima_resposta = None   # usada pelo modo --diagnostico para mostrar detalhes
 
     # ---------- robots.txt ----------
     def _robots_de(self, dominio: str):
@@ -99,9 +105,17 @@ class ClienteEducado:
         finally:
             self._ultimo_acesso[dominio] = time.monotonic()
 
-        if resp.status_code in (401, 403, 429, 503):
-            self.bloqueados[dominio] = f"HTTP {resp.status_code}"
-            raise SiteBloqueado(self.bloqueados[dominio])
+        self.ultima_resposta = resp
+        if resp.status_code in (404, 410):
+            raise PaginaNaoEncontrada(f"HTTP {resp.status_code}")
+        if resp.status_code >= 400:
+            # Qualquer outro 4xx (erro no pedido) ou 5xx (erro no servidor) = o site disse "não"
+            # ou está com problema. Não insistimos nesse site durante esta execução.
+            motivo = f"HTTP {resp.status_code}"
+            if "text/plain" in resp.headers.get("Content-Type", ""):
+                motivo += f": {resp.text.strip()[:80]}"   # ex.: "Scripts are not allowed!"
+            self.bloqueados[dominio] = motivo
+            raise SiteBloqueado(motivo)
         trecho = normalizar(resp.text[:3000]) if "html" in resp.headers.get("Content-Type", "") else ""
         if any(sinal in trecho for sinal in SINAIS_DE_BLOQUEIO):
             self.bloqueados[dominio] = "página de verificação anti-robô"

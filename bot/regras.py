@@ -1,9 +1,10 @@
 """regras.py — depois de filtrar, decide o que vira aviso.
 
-Três tipos de saída:
+Quatro tipos de saída:
   1. Resumo: todas as ofertas válidas (vai no Telegram, ordenado por preço).
   2. Queda: a MESMA URL ficou X% mais barata que na última execução (Telegram).
-  3. Diferença grande: o MESMO modelo custa muito menos numa loja do que em outra
+  3. Voltou ao estoque: a página estava esgotada e voltou, dentro do teto (Telegram).
+  4. Diferença grande: o MESMO modelo custa muito menos numa loja do que em outra
      (Telegram 🔥 + evento no Google Agenda).
 """
 from datetime import datetime, timedelta, timezone
@@ -51,6 +52,17 @@ def detectar_quedas(ofertas: list, dados: dict, queda_min_pct: float) -> list:
         if pct >= queda_min_pct and not historico.ja_alertado(dados, chave):
             quedas.append({"oferta": o, "anterior": anterior, "pct": pct, "chave": chave})
     return quedas
+
+
+def detectar_retornos_estoque(validas: list, dados: dict) -> list:
+    """Ofertas válidas (disponíveis e dentro do teto) cuja página estava ESGOTADA antes."""
+    hoje = datetime.now(FORTALEZA).date().isoformat()
+    retornos = []
+    for o in validas:
+        chave = f"estoque|{o.url}|{hoje}"
+        if historico.estoque_anterior(dados, o.url) is False and not historico.ja_alertado(dados, chave):
+            retornos.append({"oferta": o, "chave": chave})
+    return retornos
 
 
 def detectar_diferencas(ofertas: list, dados: dict, pct_min: float, reais_min: float) -> list:

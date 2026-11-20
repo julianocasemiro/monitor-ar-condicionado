@@ -31,7 +31,8 @@ def formatar_oferta(o) -> str:
     return linha + f"\n  <a href=\"{html.escape(o.url, quote=True)}\">abrir anúncio</a>"
 
 
-def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas) -> str:
+def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas,
+                    retornos=(), esgotadas=0) -> str:
     partes = ["❄️ <b>Monitor de ar-condicionado</b>"]
     for d in diferencas:
         partes.append(
@@ -40,6 +41,8 @@ def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas) -> str
             f"Mais barato: {_br(d['barata'].preco)} em {html.escape(d['barata'].loja)}\n"
             f"Mais caro: {_br(d['cara'].preco)} em {html.escape(d['cara'].loja)}\n"
             f"<a href=\"{html.escape(d['barata'].url, quote=True)}\">abrir oferta</a>")
+    for r in retornos:
+        partes.append("🟢 <b>VOLTOU AO ESTOQUE</b> (dentro do teto)\n" + formatar_oferta(r["oferta"]))
     for q in quedas:
         o = q["oferta"]
         partes.append(f"📉 <b>Caiu {q['pct']:.0f}%</b>: {_br(q['anterior'])} → {_br(o.preco)}\n"
@@ -49,11 +52,15 @@ def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas) -> str
         partes += [formatar_oferta(o) for o in validas[:15]]
     else:
         partes.append("Nenhuma oferta dentro dos critérios nesta rodada.")
+    if esgotadas:
+        partes.append(f"⏸️ {esgotadas} página(s) vigiada(s) sem estoque agora — aviso quando voltarem.")
     if bloqueios:
-        partes.append("🚫 Sites que recusaram o bot (respeitado, sem nova tentativa):\n"
+        partes.append("🚫 Falhas nesta rodada (recusas são respeitadas, sem nova tentativa):\n"
                       + "\n".join(f"• {html.escape(d)}: {html.escape(m)}" for d, m in bloqueios.items()))
     if nao_testadas:
         partes.append("ℹ️ " + html.escape(nao_testadas))
+    partes.append("💳 Preço lido da página da loja (em geral o do cartão). "
+                  "O Pix costuma sair mais barato. Confira frete para Fortaleza no site.")
     return "\n\n".join(partes)
 
 

@@ -1,10 +1,11 @@
-"""extratores.py — transforma respostas dos sites em "ofertas" padronizadas.
+"""extratores.py — transforma páginas de produto em "ofertas" padronizadas.
 
-Duas fontes de dados, ambas PÚBLICAS e estruturadas (nada de "raspar" layout visual):
-  A) Busca de catálogo VTEX: /api/catalog_system/pub/products/search
-     (endpoint público documentado pela VTEX, o mesmo que a vitrine da loja usa).
-  B) JSON-LD (schema.org/Product) embutido nas páginas de produto. É o bloco de dados
-     que as lojas publicam DE PROPÓSITO para o Google entender preço e disponibilidade.
+Fonte de dados: o JSON-LD (JSON for Linked Data, padrão schema.org/Product) embutido nas
+páginas de produto. É o bloco de dados que as lojas publicam DE PROPÓSITO para o Google
+entender nome, preço e estoque. Nada de "raspar" o layout visual da página.
+
+(A busca de catálogo VTEX da v1 foi removida: as lojas recusaram buscas automáticas.
+ Detalhes em docs/DECISOES.md, ADR-008.)
 """
 import json
 from dataclasses import dataclass, field
@@ -19,75 +20,15 @@ class Oferta:
     titulo: str
     preco: float
     disponivel: bool = True
-    origem: str = ""               # "vtex" ou "jsonld"
+    origem: str = ""               # hoje sempre "jsonld"
     texto_busca: str = ""          # título + marca + códigos, usado nos filtros
     descricao: str = ""            # descrição longa (só para achar código de fábrica)
-    item_id: str = ""              # só VTEX (necessário para simular frete)
-    seller_id: str = ""
     frete: str = "nao_verificado"  # "gratis" | "pago" | "sem_entrega" | "nao_verificado"
-    valor_frete: float = None
     avisos: list = field(default_factory=list)
     modelo_id: str = ""
     btu: int = 0
 
 
-# ----------------------------------------------------------------------------- A) VTEX
-def url_busca_vtex(dominio: str) -> str:
-    return f"https://{dominio}/api/catalog_system/pub/products/search"
-
-
-def parametros_busca_vtex(termo: str) -> dict:
-    # _from/_to: paginação (máx. 50 itens por página); O: ordenação por preço crescente
-    return {"ft": termo, "_from": 0, "_to": 49, "O": "OrderByPriceASC"}
-
-
-def extrair_vtex(produtos: list, loja: str, dominio: str) -> list:
-    """Converte a lista JSON da busca VTEX em Ofertas (uma por produto, no menor preço)."""
-    ofertas = []
-    if not isinstance(produtos, list):
-        return ofertas
-    for p in produtos:
-        melhor = None
-        textos = [p.get("productName", ""), p.get("brand", ""), p.get("productReference", "")]
-        for item in p.get("items", []) or []:
-            textos.append(item.get("nameComplete", "") or item.get("name", ""))
-            for ref in item.get("referenceId", []) or []:
-                textos.append(str(ref.get("Value", "")))
-            for seller in item.get("sellers", []) or []:
-                oferta_c = seller.get("commertialOffer", {}) or {}   # sim, a VTEX escreve "commertial"
-                preco = oferta_c.get("Price") or 0
-                disponivel = (oferta_c.get("AvailableQuantity") or 0) > 0
-                if preco and disponivel and (melhor is None or preco < melhor[0]):
-                    melhor = (float(preco), item.get("itemId", ""), seller.get("sellerId", "1"))
-        if not melhor:
-            continue
-        link = p.get("link") or f"https://{dominio}/{p.get('linkText', '')}/p"
-        ofertas.append(Oferta(loja=loja, url=link, titulo=p.get("productName", ""),
-                              preco=melhor[0], origem="vtex",
-                              texto_busca=" ".join(t for t in textos if t),
-                              item_id=str(melhor[1]), seller_id=str(melhor[2])))
-    return ofertas
-
-
-def corpo_simulacao_frete(oferta: Oferta, cep: str) -> dict:
-    return {"items": [{"id": oferta.item_id, "quantity": 1, "seller": oferta.seller_id}],
-            "postalCode": cep, "country": "BRA"}
-
-
-def interpretar_simulacao_frete(resposta: dict):
-    """Lê a resposta da simulação de carrinho VTEX e devolve (status, valor_em_reais)."""
-    infos = (resposta or {}).get("logisticsInfo") or []
-    if not infos:
-        return "nao_verificado", None
-    entregas = [s for s in infos[0].get("slas", []) or []
-                if s.get("deliveryChannel", "delivery") == "delivery"]
-    if not entregas:
-        return "sem_entrega", None
-    menor = min(s.get("price", 0) for s in entregas) / 100     # VTEX usa centavos
-    return ("gratis", 0.0) if menor == 0 else ("pago", menor)
-
-
-# ----------------------------------------------------------------------------- B) JSON-LD
 class _ColetorJsonLd(HTMLParser):
     """Lê o HTML e guarda o conteúdo de cada <script type="application/ld+json">."""
 

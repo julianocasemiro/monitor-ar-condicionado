@@ -45,7 +45,6 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          CEP_ENTREGA: ${{ secrets.CEP_ENTREGA }}
           AGENDA_WEBHOOK_URL: ${{ secrets.AGENDA_WEBHOOK_URL }}
           AGENDA_WEBHOOK_TOKEN: ${{ secrets.AGENDA_WEBHOOK_TOKEN }}
           MODO: ${{ github.event.inputs.modo || 'normal' }}

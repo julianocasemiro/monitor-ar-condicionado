@@ -18,10 +18,11 @@ def agora_iso() -> str:
 
 def carregar(caminho: str = CAMINHO_PADRAO) -> dict:
     if not os.path.exists(caminho):
-        return {"precos": {}, "alertas_enviados": {}, "falhas_por_site": {}}
+        return {"precos": {}, "estoque": {}, "alertas_enviados": {}, "falhas_por_site": {}}
     with open(caminho, encoding="utf-8") as f:
         dados = json.load(f)
     dados.setdefault("precos", {})
+    dados.setdefault("estoque", {})      # url -> True (disponível) / False (esgotado)
     dados.setdefault("alertas_enviados", {})
     dados.setdefault("falhas_por_site", {})
     return dados
@@ -46,6 +47,15 @@ def registrar_preco(dados: dict, url: str, preco: float):
 def ultimo_preco(dados: dict, url: str):
     serie = dados["precos"].get(url) or []
     return serie[-1][1] if serie else None
+
+
+def estoque_anterior(dados: dict, url: str):
+    """True/False = como estava na última execução; None = página nunca vista."""
+    return dados["estoque"].get(url)
+
+
+def registrar_estoque(dados: dict, url: str, disponivel: bool):
+    dados["estoque"][url] = bool(disponivel)
 
 
 def ja_alertado(dados: dict, chave: str) -> bool:

@@ -45,7 +45,6 @@ são comentários: **não precisam ser digitadas** (se colar junto, o PowerShell
 | **API** | Porta de entrada para **programas** conversarem com um serviço (em vez de humanos clicando). |
 | **JSON** | Formato de texto para dados estruturados: `{"preco": 1799.0}`. |
 | **YAML** | Outro formato de dados, mais legível para humanos. **A indentação (espaços) tem significado** — nunca use TAB. |
-| **VTEX** | Plataforma brasileira de e-commerce usada por muitas lojas. Tem uma busca de catálogo pública. |
 | **JSON-LD** | Bloco de dados escondido no HTML das páginas de produto, no padrão schema.org, que as lojas publicam para o Google. |
 | **robots.txt** | Arquivo na raiz de um site (`site.com/robots.txt`) dizendo o que robôs podem ou não acessar. |
 | **WAF** | *Web Application Firewall*: o "porteiro" do site que barra tráfego suspeito. |
@@ -60,21 +59,30 @@ são comentários: **não precisam ser digitadas** (se colar junto, o PowerShell
 
 A cada execução (3 vezes por dia), em ordem:
 
-1. **Lê o `config.yaml`** — marcas, BTUs, teto, lojas, modelos.
-2. **Busca nas lojas VTEX** — para cada loja, faz 3 buscas (uma por marca). Entre uma requisição e outra
-   ao mesmo site, espera 10 segundos. Antes de tudo, lê o `robots.txt` do site e obedece.
-3. **Lê as URLs vigiadas** (se você cadastrar alguma) — extrai preço do JSON-LD.
+1. **Lê e valida o `config.yaml`** — marcas, BTUs, teto, modelos e a lista de **páginas vigiadas**.
+   Se houver erro de digitação (ex.: um `modelo` que não existe), o bot para ANTES de acessar a internet.
+2. **Visita cada página vigiada** — antes de tudo, lê o `robots.txt` do site e obedece. Entre uma
+   requisição e outra ao mesmo site, espera 10 segundos. Recusa (HTTP 4xx/5xx) = o bot desiste daquele
+   site na rodada; HTTP 404 = só aquela URL está desatualizada.
+3. **Lê o JSON-LD** de cada página: nome, preço e se está em estoque.
 4. **Filtra** cada anúncio (`bot/filtros.py`):
    - é de uma das 3 marcas? é inverter? é 9k ou 12k? **não** é quente/frio? não diz 110/127V? não é peça/kit/usado?
-   - se o anúncio contém um **código de fábrica** cadastrado, ele ganha o "RG" do modelo (ex.: `midea-ai-ecomaster-9k-frio-vca`).
-5. **Verifica o frete** — para ofertas até o teto, simula o carrinho com o seu CEP (só lojas VTEX).
-6. **Aplica as regras de compra** (`bot/regras.py`): teto de R$ 2.500; 12k só aparece se for mais barato
-   que o melhor 9k da rodada; frete pago confirmado é descartado.
-7. **Procura alertas:**
+   - o "RG" do modelo vem do campo `modelo` que você pôs na URL ou, na falta dele, do **código de fábrica**
+     encontrado na página (ex.: `midea-ai-ecomaster-9k-frio-vca`).
+5. **Aplica as regras de compra** (`bot/regras.py`): teto de R$ 2.500; só o que está em estoque; 12k só
+   aparece se for mais barato que o melhor 9k da rodada.
+6. **Procura alertas:**
+   - 🟢 **Voltou ao estoque**: a página estava esgotada na rodada anterior e voltou, dentro do teto → Telegram.
    - 📉 **Queda**: a mesma URL ficou ≥ 8% mais barata desde a última execução → Telegram.
    - 🔥 **Diferença grande**: o mesmo modelo está ≥ 15% **e** ≥ R$ 250 mais barato numa loja do que em outra → Telegram **e** evento vermelho no Google Agenda.
-8. **Envia o resumo** no Telegram (até 15 ofertas, da mais barata para a mais cara) + lista de sites que recusaram o bot.
-9. **Salva o histórico** em `data/historico.json`; o workflow faz commit desse arquivo, para a próxima execução lembrar dos preços.
+7. **Envia o resumo** no Telegram (até 15 ofertas, da mais barata para a mais cara), quantas páginas estão
+   esgotadas e as falhas da rodada.
+8. **Salva o histórico** (preço e estoque de cada página) em `data/historico.json`; o workflow faz commit
+   desse arquivo, para a próxima execução lembrar.
+
+> **Limite importante:** o bot **vigia** as páginas da lista; ele **não descobre** anúncios novos.
+> Descoberta = você + os alertas da Etapa 2. Achou um anúncio bom? Cole a URL em `urls_vigiadas`.
+> O preço lido é o da página (em geral o do cartão); o Pix costuma ser mais barato.
 
 Alertas iguais não se repetem: o bot anota cada alerta enviado e não manda o mesmo de novo (diferença: no máximo 1 por modelo/loja/preço por dia).
 
@@ -218,36 +226,42 @@ python -m pytest -v
 Esperado: `All checks passed!` e `22 passed`. Os testes usam os arquivos de `tests/fixtures/` (respostas de
 exemplo), então **não acessam nenhuma loja**.
 
-### 5.6 Diagnóstico das lojas (primeiro contato real com a internet)
+### 5.6 Diagnóstico das páginas vigiadas (primeiro contato real com a internet)
 ```powershell
 # Executor: você, no PowerShell do seu PC, com (.venv) ativo
-# Custo: US$ 0,00 (≈ 15 requisições HTTP às lojas, a partir da sua internet de casa)
+# Custo: US$ 0,00 (≈ 20 requisições HTTP às lojas, a partir da sua internet de casa)
 python -m bot.main --diagnostico
 ```
-Para cada loja aparece uma linha como:
-`Frigelar | robots busca: OK | robots frete: OK | busca: OK (37 produtos)`
+Para cada página aparece um bloco como:
+```
+Midea (loja oficial) | modelo no config: midea-ai-ecomaster-9k-frio-vca
+https://www.midea.com.br/...
+  HTTP 200 | Content-Type: text/html; charset=utf-8
+  Título: Ar Condicionado 9000 BTUs Inverter | Midea
+  Preço: R$ 2188.42 | Em estoque: NÃO
+  Filtros: APROVADA | modelo detectado: midea-ai-ecomaster-9k-frio-vca
+```
 
 | Resultado | Significa | O que fazer |
 |---|---|---|
-| `busca: OK (N produtos)` | Loja VTEX respondendo | Manter |
-| `robots ...: PROIBIDO` | O site pede que robôs não acessem aquele caminho | Remover a loja do `config.yaml` (o bot já não acessaria) |
-| `NÃO É VTEX` | O site não usa VTEX | Remover a loja ou vigiar URLs específicas dela em `urls_vigiadas` |
-| `RECUSADA (HTTP 403)` | O porteiro (WAF) do site recusou | Remover. **Não** tentamos contornar (ver `docs/DECISOES.md`, ADR-003) |
+| `HTTP 200` + `Filtros: APROVADA` | Página lida e aparelho certo | Manter |
+| `Filtros: REPROVADA (motivo)` | A página é lida, mas o aparelho não serve (ex.: quente/frio) | Remover a URL |
+| `⚠️ CONFIRA o config` | A página traz o código de outro modelo | Corrigir o campo `modelo` da URL |
+| `PaginaNaoEncontrada: HTTP 404` | URL desatualizada (produto saiu do ar) | Trocar a URL |
+| `SiteBloqueado: HTTP 4xx` ou `robots.txt: PROIBIDO` | O site recusa robôs | Remover a loja. **Não** tentamos contornar (ADR-003) |
+| `Sem JSON-LD de produto` | A página não publica os dados estruturados | Remover a URL |
 
 Anote o resultado: na Etapa 10 você roda o mesmo diagnóstico **no GitHub**, e a comparação ensina muito
 (IP de casa versus IP de datacenter).
 
 ### 5.7 Rodar em modo simulação
-Primeiro, informe o seu CEP **só nesta janela** do PowerShell (some quando a janela fechar):
 ```powershell
 # Executor: você, no PowerShell do seu PC, com (.venv) ativo
-# Custo: US$ 0,00 (local)
-$env:CEP_ENTREGA = "SEU_CEP_SO_NUMEROS"
-python -m bot.main --simular -v
+# Custo: US$ 0,00 (≈ 20 requisições HTTP às lojas)
+python -m bot.main --simular
 ```
-- Troque `SEU_CEP_SO_NUMEROS` pelos **8 dígitos** do CEP, **sem hífen**, **mantendo as aspas duplas**. Ex.: `"60000000"`.
-- `--simular`: faz a busca inteira, mas **não envia** nada e **não salva** histórico.
-- `-v` (*verbose*): mostra também os anúncios descartados e o motivo — ótimo para entender os filtros.
+- `--simular`: faz a rodada inteira, mas **não envia** nada e **não salva** histórico.
+- O log mostra também os anúncios **descartados** e o motivo — ótimo para entender os filtros.
 
 Ao final aparece a mensagem exatamente como ela chegaria no Telegram (com as tags `<b>` visíveis; no Telegram elas viram negrito).
 
@@ -423,7 +437,6 @@ Recarregue a página do repositório: os arquivos devem aparecer. Clique na aba 
 |---|---|---|
 | `TELEGRAM_TOKEN` | token do BotFather (Etapa 6.1) | Sim |
 | `TELEGRAM_CHAT_ID` | número do chat (Etapa 6.2) | Sim |
-| `CEP_ENTREGA` | seu CEP, 8 dígitos sem hífen | Recomendado (sem ele, frete fica "?") |
 | `AGENDA_WEBHOOK_URL` | URL `/exec` (Etapa 7.5) | Para a agenda |
 | `AGENDA_WEBHOOK_TOKEN` | token da Etapa 7.1 | Para a agenda |
 
@@ -482,15 +495,13 @@ git push
 | `criterios.voltagem` | Voltagem exigida | Manual | `220` |
 | `criterios.preco_maximo` | Teto do aparelho, sem instalação, em reais | Manual | `2500.00` (ponto decimal, sem "R$") |
 | `criterios.regra_12k` | `"somente_se_mais_barato_que_9k"` ou `"sempre"` | Manual | com aspas |
-| `criterios.exigir_frete_gratis` | Descarta frete pago **confirmado** | Manual | `true` |
+| `criterios.exigir_frete_gratis` | Descarta frete pago **confirmado** (hoje nenhuma loja permite verificar; todas vêm com aviso) | Manual | `true` |
 | `criterios.palavras_proibidas` | Títulos com estas palavras são descartados (peças, usados) | Manual | sem acento, minúsculas |
 | `criterios.codigos_quente_frio` | Pedaços de código de fábrica que indicam quente/frio | Manual | `"gwh"` |
 | `alertas.*` | Limites dos alertas (%, R$) e liga/desliga agenda | Manual | `15`, `250`, `true` |
 | `educacao_http.*` | Ritmo do bot (intervalo, timeout, teto) | Manual — **não reduza o intervalo** | `10` |
 | `modelos` | Modelos com código de fábrica (base da comparação entre lojas) | Manual | ver abaixo |
-| `lojas_vtex` | Lojas consultadas pela busca VTEX | Manual | ver abaixo |
-| `termos_busca` | O que é pesquisado em cada loja VTEX | Manual | `"ar condicionado gree inverter frio"` |
-| `urls_vigiadas` | Páginas de produto específicas | Manual | ver abaixo |
+| `urls_vigiadas` | Páginas de produto vigiadas (o coração do bot) | Manual | ver abaixo |
 | `lojas_com_instalacao_inclusa` | Nomes de lojas (iguais ao campo `nome`/`loja`) que instalam de graça | Manual | `["Loja X"]` |
 | `data/historico.json` | Preços passados e alertas já enviados | **Automático — nunca edite à mão** | — |
 
@@ -503,20 +514,16 @@ evaporadora e da condensadora, em **minúsculas**, **sem** o prefixo `45`:
     codigos: ["CODIGO_EM_MINUSCULAS"]
 ```
 
-**Descobrir se uma loja é VTEX:** abra no navegador `https://www.LOJA.com.br/api/catalog_system/pub/products/search?ft=gree`.
-Se aparecer texto JSON (começando com `[`), é VTEX → adicione em `lojas_vtex`:
+**Vigiar uma página nova** (qualquer loja): acrescente um item no fim de `urls_vigiadas`,
+com **2 espaços** antes do `-`:
 ```yaml
-  - nome: "Nome da Loja"
-    dominio: "www.loja.com.br"     # sem https://, sem barra no final
-```
-
-**Vigiar uma página específica** (qualquer loja):
-```yaml
-urls_vigiadas:
   - loja: "Nome da Loja"
     url: "https://www.loja.com.br/caminho-do-produto/p"
+    modelo: midea-ai-ecomaster-9k-frio-vca    # opcional, sem aspas; só se você CONFERIU o código
 ```
-(Se a lista estava como `urls_vigiadas: []`, apague o `[]`.)
+- `loja` e `url` vão **entre aspas duplas**; `modelo` vai **sem aspas** e precisa ser igual a um `id` da lista `modelos`.
+- Depois de salvar, rode `python -m pytest -q` (o teste `test_config_do_repositorio_e_valida` acusa erro de digitação)
+  e `python -m bot.main --diagnostico` para ver se a loja aceita o bot.
 
 ---
 
@@ -532,7 +539,8 @@ urls_vigiadas:
 | Passo "Salvar o histórico" falha com 403 | Workflow sem permissão de escrita | Etapa 9, passo 4 |
 | `git push` recusado (*rejected, fetch first*) | O robô commitou o histórico depois do seu último `pull` | `git pull` e depois `git push` |
 | Diagnóstico OK no PC, `HTTP 403` no GitHub | A loja bloqueia IPs de datacenter | Decisão da loja: remova-a. Alternativa legítima: rodar só essa parte no seu PC pelo Agendador de Tarefas do Windows |
-| Nenhuma oferta, nenhuma falha | Filtros rígidos ou nada abaixo do teto | Rode `simular` localmente com `-v` e leia os motivos dos descartes |
+| Nenhuma oferta, nenhuma falha | Tudo esgotado ou acima do teto | Normal: o resumo mostra quantas páginas estão esgotadas; você será avisado quando voltarem |
+| `ConfigInvalida: ...` | Erro de digitação no `config.yaml` | A mensagem diz o item e o campo; corrija e rode `pytest` |
 | Execução agendada não aconteceu | Atraso do GitHub, ou 60 dias sem atividade | Aba Actions → veja se há aviso de workflow desativado → **Enable workflow** |
 
 ---

@@ -19,8 +19,9 @@ criterios:
   # "somente_se_mais_barato_que_9k" -> só avisa 12k se ele custar MENOS que o melhor 9k da rodada.
   # Troque para "sempre" se quiser ver todo 12k abaixo do teto.
   regra_12k: "somente_se_mais_barato_que_9k"
-  exigir_frete_gratis: true      # oferta com frete PAGO confirmado é descartada;
-                                 # frete "não verificado" passa, mas com aviso ⚠️
+  exigir_frete_gratis: true      # oferta com frete PAGO confirmado é descartada.
+                                 # Hoje nenhuma loja permite verificar frete automaticamente,
+                                 # então toda oferta vem com o aviso "confira o frete".
   # Palavras que indicam peça/acessório, e não o aparelho completo
   palavras_proibidas: ["kit instalacao", "kit de instalacao", "suporte", "controle remoto",
                        "placa", "capacitor", "somente evaporadora", "somente condensadora",
@@ -56,6 +57,10 @@ modelos:
     nome: "Gree Inverter 9.000 BTUs Frio (GWC09ATA)"
     btu: 9000
     codigos: ["gwc09ata-d6dna2c"]
+  - id: gree-gside-9k-frio
+    nome: "Gree G-Side 9.000 BTUs Inverter Frio (GWC09ATCXB)"
+    btu: 9000
+    codigos: ["gwc09atcxb"]
   - id: gree-gside-12k-frio
     nome: "Gree G-Side 12.000 BTUs Inverter Frio"
     btu: 12000
@@ -101,36 +106,59 @@ modelos:
     btu: 9000
     codigos: ["hxfi09b2fa", "hxfe09b2na"]
 
-# Lojas que o bot consulta pela busca pública de catálogo da plataforma VTEX.
-# "candidata" = eu NÃO consegui confirmar daqui que a loja roda em VTEX.
-# Rode o modo diagnóstico (Etapa 8 do guia) e ele diz quais funcionam de verdade.
-lojas_vtex:
-  - nome: "Midea (loja oficial)"
-    dominio: "www.midea.com.br"
-  - nome: "WebContinental"
-    dominio: "www.webcontinental.com.br"
-  - nome: "Frigelar"
-    dominio: "www.frigelar.com.br"
-  - nome: "Dufrio"
-    dominio: "www.dufrio.com.br"
-  - nome: "Centralar"
-    dominio: "www.centralar.com.br"
-  - nome: "Leveros"
-    dominio: "www.leveros.com.br"
-  - nome: "Fast Shop"
-    dominio: "site.fastshop.com.br"
-
-# Termos buscados em CADA loja VTEX (o filtro fino é feito depois, no Python)
-termos_busca: ["ar condicionado gree inverter frio",
-               "ar condicionado midea inverter frio",
-               "ar condicionado elgin inverter frio"]
-
-# URLs de páginas de produto que você quer vigiar diretamente (qualquer loja).
-# O bot lê os dados estruturados (JSON-LD, padrão schema.org) da página.
-# Lojas com proteção anti-robô forte provavelmente vão bloquear — e o bot RESPEITA o bloqueio.
-urls_vigiadas: []
-#  - loja: "Nome da loja"
-#    url: "https://www.exemplo.com.br/produto-x/p"
+# =============================================================================
+# PÁGINAS VIGIADAS — o coração do bot (veja docs/DECISOES.md, ADR-008).
+# O bot visita cada página 3x/dia e lê nome, preço e estoque do JSON-LD.
+#   loja   -> nome que aparece nos avisos (obrigatório)
+#   url    -> endereço da página do produto, começando com https:// (obrigatório)
+#   modelo -> (opcional) id de um item da lista "modelos" acima. Use SÓ quando você
+#             CONFERIU o código de fábrica na página. É o que permite comparar o
+#             mesmo aparelho entre lojas diferentes (alerta de diferença grande).
+# Lojas testadas em 20/11/2026: Midea, Gazin e KaBuM aceitaram; Fast Shop a confirmar.
+# Recusaram e ficam de fora: Centralar (robots.txt), Ponto Frio/Casas Bahia/Extra (HTTP 403).
+# =============================================================================
+urls_vigiadas:
+  # --- Midea (loja oficial) — códigos conferidos na própria página
+  - loja: "Midea (loja oficial)"
+    url: "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea/p"
+    modelo: midea-ai-ecomaster-9k-frio-vca
+  - loja: "Midea (loja oficial)"
+    url: "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea-1777/p"
+    modelo: midea-ai-ecomaster-9k-frio-vca
+  - loja: "Midea (loja oficial)"
+    url: "https://www.midea.com.br/ar-condicionado-split-9000-btus-inverter-ai-ecomaster-pro-frio-midea/p"
+    modelo: midea-ai-ecomaster-pro-9k-frio
+  - loja: "Midea (loja oficial)"
+    url: "https://www.midea.com.br/ar-condicionado-split-9000-btus-ai-airvolution-frio-midea-1/p"
+    modelo: midea-ai-airvolution-9k-frio
+  # --- Fast Shop (marketplace) — ainda não testada: confirme com o --diagnostico
+  - loja: "Fast Shop"
+    url: "https://site.fastshop.com.br/ar-condicionado-split-inverter-midea-ai-ecomaster-9000-btus-frio-220v-38ezvca09m5-103779/p"
+    modelo: midea-ai-ecomaster-9k-frio-vca
+  - loja: "Fast Shop"
+    url: "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p"
+  - loja: "Fast Shop"
+    url: "https://site.fastshop.com.br/ar-condicionado-split-hi-wall-gree-9000-btus-frio-220v-gwc09atcxb-195513/p"
+    modelo: gree-gside-9k-frio
+  # --- KaBuM
+  - loja: "KaBuM"
+    url: "https://www.kabum.com.br/produto/643061/ar-condicionado-inverter-gree-9000-btus-frio-220v-g-top-auto-r-32-wi-fi"
+  - loja: "KaBuM"
+    url: "https://www.kabum.com.br/produto/658141/ar-condicionado-split-hi-wall-inverter-gree-9000-btus-frio-g-top-auto-inverter-b-220v"
+  - loja: "KaBuM"
+    url: "https://www.kabum.com.br/produto/530907/ar-condicionado-split-elgin-eco-inverter-ii-wi-fi-9000-btus-frio-220v-hjfe09c2cb"
+    modelo: elgin-eco-ii-9k-frio-wb
+  # --- Gazin
+  - loja: "Gazin"
+    url: "https://www.gazin.com.br/produto/ar-condicionado-split-g-top-auto-inverter-9000-btus-wi-fi-gree-frio/8789/sem-cor/220-volts"
+  - loja: "Gazin"
+    url: "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-wi-fi-gree-frio/9667/sem-cor/220-volts"
+  - loja: "Gazin"
+    url: "https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts"
+  - loja: "Gazin"
+    url: "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-ai-ecomaster-springer-midea-frio/11067/sem-cor/220-volts"
+  - loja: "Gazin"
+    url: "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-airvolution-springer-midea-frio/10258/sem-cor/220-volts"
 
 # Lojas que incluem instalação no preço (preencha quando encontrar uma).
 # Ofertas dessas lojas passam mesmo sem frete grátis confirmado.

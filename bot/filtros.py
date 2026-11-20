@@ -75,12 +75,16 @@ def identificar_modelo(texto_norm: str, modelos: list):
     return None
 
 
-def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "") -> dict:
+def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "",
+            modelo_forcado: dict | None = None) -> dict:
     """Aplica TODOS os critérios e devolve um dict com o veredito e o motivo.
 
     titulo      -> nome do produto + marca + códigos (onde aplicamos todas as regras)
     texto_extra -> descrição longa; usada SÓ para achar o código de fábrica, porque
                    descrições falam "dias quentes" e confundiriam a regra de só frio.
+    modelo_forcado -> modelo informado por você no config.yaml (campo `modelo` da URL).
+                   Tem prioridade sobre a detecção automática por código de fábrica,
+                   porque algumas lojas publicam títulos genéricos, sem o código.
 
     Exemplo de retorno:
       {"aprovado": True, "marca": "gree", "btu": 9000, "modelo": {...},
@@ -105,7 +109,12 @@ def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "") 
         resultado["motivo"] = "não é inverter"
         return resultado
 
-    modelo = identificar_modelo(t + " " + normalizar(texto_extra), modelos)
+    detectado = identificar_modelo(t + " " + normalizar(texto_extra), modelos)
+    modelo = modelo_forcado or detectado
+    if modelo_forcado and detectado and detectado["id"] != modelo_forcado["id"]:
+        # Proteção contra erro humano no config: a página mostra o código de OUTRO modelo
+        resultado["avisos"].append(f"CONFIRA o config: a página traz o código de '{detectado['id']}', "
+                                   f"mas a URL está marcada como '{modelo_forcado['id']}'")
     btus = detectar_btus(t)
     if modelo:                      # o código de fábrica é mais confiável que o texto
         btus = {modelo["btu"]}
