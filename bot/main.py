@@ -91,7 +91,7 @@ def executar(cfg: dict, simular: bool = False) -> int:
     for o in brutas:
         forcado = modelo_por_id(cfg, o.modelo_id) if o.modelo_id else None
         veredito = filtros.avaliar(o.texto_busca or o.titulo, crit, cfg["modelos"],
-                                   o.descricao, modelo_forcado=forcado)
+                                   o.descricao, modelo_forcado=forcado, url=o.url)
         if not veredito["aprovado"]:
             log.info("Descartada (%s): %s", veredito["motivo"], o.titulo)
             continue
@@ -178,7 +178,7 @@ def diagnosticar(cfg: dict) -> int:
             continue
         forcado = modelo_por_id(cfg, item["modelo"]) if item.get("modelo") else None
         v = filtros.avaliar(o.texto_busca or o.titulo, cfg["criterios"], cfg["modelos"],
-                            o.descricao, modelo_forcado=forcado)
+                            o.descricao, modelo_forcado=forcado, url=url)
         print(f"  Título: {o.titulo[:80]}")
         print(f"  Preço: R$ {o.preco:.2f} | Em estoque: {'sim' if o.disponivel else 'NÃO'}")
         print(f"  Filtros: {'APROVADA' if v['aprovado'] else 'REPROVADA (' + v['motivo'] + ')'}"

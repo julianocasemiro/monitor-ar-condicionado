@@ -114,7 +114,8 @@ modelos:
 #   modelo -> (opcional) id de um item da lista "modelos" acima. Use SÓ quando você
 #             CONFERIU o código de fábrica na página. É o que permite comparar o
 #             mesmo aparelho entre lojas diferentes (alerta de diferença grande).
-# Lojas testadas em 20/11/2026: Midea, Gazin e KaBuM aceitaram; Fast Shop a confirmar.
+# Diagnóstico de 20/11/2026: Midea, Fast Shop, Gazin e KaBuM aceitaram (14 de 15 páginas lidas;
+# a do Gree G-Side na Fast Shop saiu da lista por não publicar JSON-LD).
 # Recusaram e ficam de fora: Centralar (robots.txt), Ponto Frio/Casas Bahia/Extra (HTTP 403).
 # =============================================================================
 urls_vigiadas:
@@ -131,15 +132,12 @@ urls_vigiadas:
   - loja: "Midea (loja oficial)"
     url: "https://www.midea.com.br/ar-condicionado-split-9000-btus-ai-airvolution-frio-midea-1/p"
     modelo: midea-ai-airvolution-9k-frio
-  # --- Fast Shop (marketplace) — ainda não testada: confirme com o --diagnostico
+  # --- Fast Shop (marketplace: vários vendedores dentro da loja)
   - loja: "Fast Shop"
     url: "https://site.fastshop.com.br/ar-condicionado-split-inverter-midea-ai-ecomaster-9000-btus-frio-220v-38ezvca09m5-103779/p"
     modelo: midea-ai-ecomaster-9k-frio-vca
   - loja: "Fast Shop"
     url: "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p"
-  - loja: "Fast Shop"
-    url: "https://site.fastshop.com.br/ar-condicionado-split-hi-wall-gree-9000-btus-frio-220v-gwc09atcxb-195513/p"
-    modelo: gree-gside-9k-frio
   # --- KaBuM
   - loja: "KaBuM"
     url: "https://www.kabum.com.br/produto/643061/ar-condicionado-inverter-gree-9000-btus-frio-220v-g-top-auto-r-32-wi-fi"

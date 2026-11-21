@@ -120,6 +120,21 @@ def test_modelo_forcado_vale_mais_que_titulo_generico(cfg):
     assert r["aprovado"] and r["modelo"]["id"] == "midea-ai-ecomaster-9k-frio-vca"
 
 
+def test_modelo_conhecido_dispensa_a_palavra_inverter(cfg):
+    titulo = "Ar-Condicionado Split 9000 BTUs AI AirVolution Frio Midea"   # título real da Midea
+    assert not avaliar(titulo, cfg)["aprovado"]                           # sem modelo: reprova
+    forcado = main.modelo_por_id(cfg, "midea-ai-airvolution-9k-frio")
+    r = filtros.avaliar(titulo, cfg["criterios"], cfg["modelos"], modelo_forcado=forcado)
+    assert r["aprovado"]
+
+
+def test_voltagem_lida_da_url(cfg):
+    r = filtros.avaliar("Ar-Condicionado Split Inverter 9.000 BTUs AI Springer Midea Frio",
+                        cfg["criterios"], cfg["modelos"],
+                        url="https://www.gazin.com.br/produto/x/11067/sem-cor/220-volts")
+    assert r["aprovado"] and r["avisos"] == []
+
+
 def test_modelo_forcado_errado_gera_aviso(cfg):
     forcado = main.modelo_por_id(cfg, "midea-ai-ecomaster-9k-frio-vca")
     r = filtros.avaliar("Gree G-Top Auto 9000 BTUs Inverter Frio GWC09ATB-D6DNA1A 220V",

@@ -76,7 +76,7 @@ def identificar_modelo(texto_norm: str, modelos: list):
 
 
 def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "",
-            modelo_forcado: dict | None = None) -> dict:
+            modelo_forcado: dict | None = None, url: str = "") -> dict:
     """Aplica TODOS os critérios e devolve um dict com o veredito e o motivo.
 
     titulo      -> nome do produto + marca + códigos (onde aplicamos todas as regras)
@@ -85,6 +85,8 @@ def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "",
     modelo_forcado -> modelo informado por você no config.yaml (campo `modelo` da URL).
                    Tem prioridade sobre a detecção automática por código de fábrica,
                    porque algumas lojas publicam títulos genéricos, sem o código.
+    url         -> endereço da página; usado SÓ para a voltagem, porque várias lojas
+                   colocam "220-volts" no endereço e não no título.
 
     Exemplo de retorno:
       {"aprovado": True, "marca": "gree", "btu": 9000, "modelo": {...},
@@ -105,12 +107,13 @@ def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "",
         return resultado
     resultado["marca"] = marca
 
-    if criterios.get("exigir_inverter") and "inverter" not in t:
-        resultado["motivo"] = "não é inverter"
-        return resultado
-
     detectado = identificar_modelo(t + " " + normalizar(texto_extra), modelos)
     modelo = modelo_forcado or detectado
+    # Todo item da lista "modelos" é inverter por definição (a lista é curada).
+    # Ex.: a Midea chama o AirVolution só de "Split ... AI AirVolution Frio", sem a palavra.
+    if criterios.get("exigir_inverter") and "inverter" not in t and not modelo:
+        resultado["motivo"] = "não é inverter"
+        return resultado
     if modelo_forcado and detectado and detectado["id"] != modelo_forcado["id"]:
         # Proteção contra erro humano no config: a página mostra o código de OUTRO modelo
         resultado["avisos"].append(f"CONFIRA o config: a página traz o código de '{detectado['id']}', "
@@ -132,7 +135,7 @@ def avaliar(titulo: str, criterios: dict, modelos: list, texto_extra: str = "",
         resultado["motivo"] = "versão quente e frio"
         return resultado
 
-    v = voltagem_ok(t, criterios["voltagem"])
+    v = voltagem_ok(t + " " + normalizar(url), criterios["voltagem"])
     if v is False:
         resultado["motivo"] = "voltagem diferente de 220V"
         return resultado
