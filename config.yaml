@@ -134,9 +134,6 @@ urls_vigiadas:
     modelo: midea-ai-airvolution-9k-frio
   # --- Fast Shop (marketplace: vários vendedores dentro da loja)
   - loja: "Fast Shop"
-    url: "https://site.fastshop.com.br/ar-condicionado-split-inverter-midea-ai-ecomaster-9000-btus-frio-220v-38ezvca09m5-103779/p"
-    modelo: midea-ai-ecomaster-9k-frio-vca
-  - loja: "Fast Shop"
     url: "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p"
   # --- KaBuM
   - loja: "KaBuM"
