@@ -1,5 +1,7 @@
 {
- "alertas_enviados": {},
+ "alertas_enviados": {
+  "queda|https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts|2170": "2026-11-28T03:22:39+00:00"
+ },
  "estoque": {
   "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p": true,
   "https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts": true,
@@ -35,6 +37,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     1935.03
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    1935.03
    ]
   ],
   "https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts": [
@@ -53,6 +59,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     2871.75
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2169.9
    ]
   ],
   "https://www.gazin.com.br/produto/ar-condicionado-split-g-top-auto-inverter-9000-btus-wi-fi-gree-frio/8789/sem-cor/220-volts": [
@@ -71,6 +81,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     3518.1
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2669.9
    ]
   ],
   "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-ai-ecomaster-springer-midea-frio/11067/sem-cor/220-volts": [
@@ -88,6 +102,10 @@
    ],
    [
     "2026-11-27T19:03:45+00:00",
+    1829.9
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
     1829.9
    ]
   ],
@@ -107,6 +125,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     3166.56
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    3166.56
    ]
   ],
   "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-wi-fi-gree-frio/9667/sem-cor/220-volts": [
@@ -124,6 +146,10 @@
    ],
    [
     "2026-11-27T19:03:45+00:00",
+    3402.78
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
     3402.78
    ]
   ],
@@ -143,6 +169,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     3756.21
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    3756.21
    ]
   ],
   "https://www.kabum.com.br/produto/643061/ar-condicionado-inverter-gree-9000-btus-frio-220v-g-top-auto-r-32-wi-fi": [
@@ -160,6 +190,10 @@
    ],
    [
     "2026-11-27T19:03:45+00:00",
+    2055.72
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
     2055.72
    ]
   ],
@@ -179,6 +213,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     2496.6
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2496.6
    ]
   ],
   "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea-1777/p": [
@@ -196,6 +234,10 @@
    ],
    [
     "2026-11-27T19:03:45+00:00",
+    2079.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
     2079.0
    ]
   ],
@@ -215,6 +257,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     2079.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2079.0
    ]
   ],
   "https://www.midea.com.br/ar-condicionado-split-9000-btus-ai-airvolution-frio-midea-1/p": [
@@ -233,6 +279,10 @@
    [
     "2026-11-27T19:03:45+00:00",
     1899.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    1899.0
    ]
   ],
   "https://www.midea.com.br/ar-condicionado-split-9000-btus-inverter-ai-ecomaster-pro-frio-midea/p": [
@@ -250,6 +300,10 @@
    ],
    [
     "2026-11-27T19:03:45+00:00",
+    2319.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
     2319.0
    ]
   ]
