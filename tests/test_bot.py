@@ -4,6 +4,7 @@ Cada teste verifica UMA regra. Se alguém (você no futuro!) mudar o código e q
 uma regra, o teste fica vermelho no GitHub antes do bot ir para produção.
 """
 import os
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import yaml
@@ -87,7 +88,7 @@ def test_regra_12k_e_teto_e_frete(cfg):
 
 
 def test_diferenca_grande():
-    dados = {"precos": {}, "alertas_enviados": {}, "falhas_por_site": {}}
+    dados = historico.carregar("/caminho/que/nao/existe.json")
     achados = regras.detectar_diferencas([_oferta("a", 1700), _oferta("b", 2300)], dados, 15, 250)
     assert len(achados) == 1 and achados[0]["barata"].loja == "a"
     historico.marcar_alertado(dados, achados[0]["chave"])
@@ -95,7 +96,7 @@ def test_diferenca_grande():
 
 
 def test_queda_de_preco():
-    dados = {"precos": {}, "alertas_enviados": {}, "falhas_por_site": {}}
+    dados = historico.carregar("/caminho/que/nao/existe.json")
     o = _oferta("a", 1800)
     historico.registrar_preco(dados, o.url, 2000)
     assert regras.detectar_quedas([o], dados, 8)[0]["pct"] == pytest.approx(10)
@@ -193,3 +194,121 @@ def test_execucao_simulada_ponta_a_ponta(cfg, monkeypatch, capsys, tmp_path):
     assert main.executar(mini, simular=True) == 0
     saida = capsys.readouterr().out
     assert "1 oferta(s) dentro dos critérios" in saida and "R$ 2.190,90" in saida
+
+
+# ------------------------------------------------------------------ v2: alertas por evento
+def _iso(horas_atras):
+    return (datetime.now(UTC) - timedelta(hours=horas_atras)).isoformat(timespec="seconds")
+
+
+def test_preco_so_e_gravado_quando_muda():
+    dados = historico.carregar("/caminho/que/nao/existe.json")
+    assert historico.registrar_preco(dados, "u", 2000) is True
+    assert historico.registrar_preco(dados, "u", 2000) is False     # igual: não grava
+    assert historico.registrar_preco(dados, "u", 1900) is True
+    assert [p for _, p in dados["precos"]["u"]] == [2000, 1900]
+
+
+@pytest.mark.parametrize("serie,esperado", [
+    ([(30, 2500), (5, 2000)], 2500),   # 2.500 vigorou até 5 h atrás: conta na janela
+    ([(48, 2500), (30, 2000)], 2000),  # 2.500 saiu de vigor há 30 h: não conta
+    ([(3, 1900)], 1900),
+])
+def test_maior_preco_das_ultimas_24h(serie, esperado):
+    dados = historico.carregar("/caminho/que/nao/existe.json")
+    for horas, preco in serie:
+        historico.registrar_preco(dados, "u", preco, quando=_iso(horas))
+    assert historico.maior_preco_recente(dados, "u", 24) == esperado
+
+
+def test_queda_em_degraus_e_percebida():
+    """3 quedas pequenas seguidas: nenhuma passa de 8% sozinha, mas juntas passam."""
+    dados = historico.carregar("/caminho/que/nao/existe.json")
+    o = _oferta("a", 1830)
+    for horas, preco in [(6, 2000), (4, 1940), (2, 1885)]:
+        historico.registrar_preco(dados, o.url, preco, quando=_iso(horas))
+    quedas = regras.detectar_quedas([o], dados, 8, 24)
+    assert len(quedas) == 1 and quedas[0]["anterior"] == 2000
+
+
+def test_oferta_nova():
+    dados = historico.carregar("/caminho/que/nao/existe.json")
+    historico.marcar_validas_vistas(dados, ["https://a/1800"])
+    novas = regras.detectar_ofertas_novas([_oferta("a", 1800), _oferta("b", 1700)], dados)
+    assert [n["oferta"].loja for n in novas] == ["b"]
+
+
+@pytest.mark.parametrize("ultimo,hora_agora,devido", [
+    ("", 18, True), ("", 17, False), ("", 23, True),   # a partir das 18 h, se ainda não saiu
+    ("2026-11-28", 19, False),                         # já saiu hoje
+    ("2026-11-27", 20, True),                          # o último foi ontem
+])
+def test_resumo_diario_devido(ultimo, hora_agora, devido):
+    agora = datetime(2026, 11, 28, hora_agora, 17, tzinfo=regras.FORTALEZA)
+    assert regras.resumo_diario_devido(ultimo, 18, agora) is devido
+
+
+def test_falha_cronica_medida_em_horas():
+    dados = historico.carregar("/caminho/que/nao/existe.json")
+    historico.atualizar_falhas(dados, {"site-a", "site-b"})
+    dados["falhas_desde"]["site-a"] = _iso(25)          # falha há 25 h
+    assert historico.falhas_cronicas(dados, 24) == ["site-a"]
+    historico.atualizar_falhas(dados, {"site-b"})       # site-a voltou a funcionar
+    assert "site-a" not in dados["falhas_desde"]
+
+
+def test_historico_antigo_e_migrado(tmp_path):
+    caminho = tmp_path / "historico.json"
+    caminho.write_text('{"precos": {}, "falhas_por_site": {"x": 2}}', encoding="utf-8")
+    dados = historico.carregar(str(caminho))
+    assert "falhas_por_site" not in dados and dados["falhas_desde"] == {}
+    assert "validas_vistas" not in dados     # sinal de "primeira execução no formato novo"
+
+
+@pytest.mark.parametrize("texto,aprovado", [
+    ("Ar Condicionado Split Inverter TCL T-Pro 2.0 9000 BTUs Só Frio TAC-09CTG2-INV 220V", True),
+    ("Ar Condicionado Split TCL T-Pro 2.0 Inverter 9000 BTUs 220V TAC-09CHTG2", False),
+    ("Ar Condicionado Split Inverter Agratto Zen Top 9000 BTU/h ZICST9QF 220 Volts", False),
+    ("Ar Condicionado Split Inverter Agratto Zen Top 9000 BTU/h Frio ZICST9F 220 Volts", True),
+    ("Ar Condicionado Philco Split Inverter 9000BTUs Quente/Frio PAC9FB 220v", False),
+    ("Ar-Condicionado Split Inverter 9000 BTUs LG Dual Inverter Voice Só Frio S3-Q09AA31F 220V", True),
+])
+def test_marcas_novas(texto, aprovado, cfg):
+    assert avaliar(texto, cfg)["aprovado"] is aprovado
+
+
+def test_lg_nao_casa_dentro_de_elgin(cfg):
+    t = filtros.normalizar("Ar Condicionado Elgin Eco Inverter 9000")
+    assert filtros.detectar_marca(t, cfg["criterios"]["marcas"]) == "elgin"
+
+
+def test_config_com_hora_do_resumo_invalida(cfg):
+    ruim = {**cfg, "notificacoes": {**cfg["notificacoes"], "resumo_diario_hora": 25}}
+    with pytest.raises(main.ConfigInvalida, match="resumo_diario_hora"):
+        main.validar_config(ruim)
+
+
+def test_so_avisa_quando_ha_evento(cfg, monkeypatch, tmp_path):
+    """3 execuções reais (Telegram falso): 1ª registra em silêncio, 2ª nada muda,
+    3ª o preço cai 10% -> só então sai mensagem."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TELEGRAM_TOKEN", "t")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "c")
+    monkeypatch.setattr(regras, "resumo_diario_devido", lambda *a: False)
+    enviadas = []
+    monkeypatch.setattr(main.notificadores, "enviar_telegram", lambda t, c, msg: enviadas.append(msg))
+    with open(os.path.join(FIX, "pagina_produto.html"), encoding="utf-8") as f:
+        pagina = f.read()
+    estado = {"html": pagina}
+    monkeypatch.setattr(ClienteEducado, "get", lambda self, url, **k: _RespostaFalsa(200, estado["html"]))
+    mini = {**cfg, "urls_vigiadas": [{"loja": "Loja X", "url": "https://x.com/p",
+                                      "modelo": "gree-gtop-auto-9k-frio"}]}
+
+    assert main.executar(mini) == 0 and enviadas == []        # 1ª: registra em silêncio
+    assert main.executar(mini) == 0 and enviadas == []        # 2ª: nada mudou
+    estado["html"] = pagina.replace("2190.90", "1971.81")      # 3ª: caiu 10%
+    assert main.executar(mini) == 0
+    assert len(enviadas) == 1 and "Caiu 10%" in enviadas[0]
+    assert main.executar(mini) == 0 and len(enviadas) == 1    # 4ª: mesmo preço, não repete
+    dados = historico.carregar()
+    assert [p for _, p in dados["precos"]["https://x.com/p"]] == [2190.90, 1971.81]

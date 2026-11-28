@@ -10,6 +10,12 @@ criterios:
     gree:  ["gree"]
     midea: ["midea", "springer midea"]
     elgin: ["elgin"]
+    # Marcas incluídas em 28/11/2026 (reputação e preço pesquisados; veja docs/DECISOES.md, ADR-010).
+    # A busca é por PALAVRA INTEIRA: "lg" não casa dentro de "elgin".
+    tcl:     ["tcl"]
+    agratto: ["agratto"]
+    philco:  ["philco"]
+    lg:      ["lg"]
   capacidades_btu: [9000, 12000]  # só aceita estes tamanhos
   exigir_inverter: true
   exigir_so_frio: true           # descarta "quente e frio", "q/f" etc.
@@ -28,15 +34,29 @@ criterios:
                        "capa protetora", "usado", "recondicionado", "vitrine"]
   # Códigos de fábrica que indicam versão QUENTE/FRIO (a regra de texto às vezes falha)
   # GWH = Gree quente/frio | HJQ = Elgin quente/frio | EZVQ = Midea quente/frio
-  codigos_quente_frio: ["gwh", "hjq", "ezvq"]
+  # CHTG2 = TCL T-Pro 2.0 quente/frio (TAC-09CHTG2; o só frio é TAC-09CTG2)
+  # CST9QF = Agratto Zen Top quente/frio (ZICST9QF; o só frio é ZICST9F)
+  # Philco: o código PAC9FB aparece como "frio" num anúncio e "quente/frio" em outro;
+  #         por isso NÃO há código Philco aqui: vale o texto do título.
+  codigos_quente_frio: ["gwh", "hjq", "ezvq", "chtg2", "cst9qf"]
 
 alertas:
   # "Diferença grande" entre lojas para o MESMO modelo -> Telegram 🔥 + evento no Google Agenda
   diferenca_percentual_minima: 15   # (mais caro - mais barato) / mais caro >= 15%
   diferenca_reais_minima: 250       # ...E a diferença precisa ser de pelo menos R$ 250
-  # Queda em relação ao histórico da MESMA URL -> só Telegram
+  # Queda em relação ao MAIOR preço da MESMA URL nas últimas X horas -> só Telegram
   queda_percentual_minima: 8
+  janela_queda_horas: 24
   criar_evento_agenda: true
+
+notificacoes:
+  # O bot roda de hora em hora, mas SÓ manda mensagem quando há evento
+  # (📉 queda, 🟢 voltou ao estoque, 🆕 oferta nova, 🔥 diferença grande).
+  # Uma vez por dia, a partir desta hora (de Fortaleza, 0 a 23, SEM aspas), sai o resumo
+  # completo — é o "batimento cardíaco" que prova que o bot está vivo.
+  resumo_diario_hora: 18
+  # Site/URL que falha sem parar há esta quantidade de horas ganha um aviso no resumo.
+  falha_cronica_horas: 24
 
 educacao_http:                   # regras de "bom cidadão" na internet (ver docs/DECISOES.md)
   intervalo_segundos: 10         # espera mínima entre 2 requisições ao MESMO site
@@ -105,10 +125,24 @@ modelos:
     nome: "Elgin Eco Life 9.000 BTUs Frio"
     btu: 9000
     codigos: ["hxfi09b2fa", "hxfe09b2na"]
+  # Marcas novas: códigos lidos em anúncios (KaBuM/Magalu) em 28/11/2026.
+  # Confira na página do fabricante antes de ligar uma URL a estes modelos.
+  - id: tcl-tpro2-9k-frio
+    nome: "TCL T-Pro 2.0 9.000 BTUs Inverter Só Frio (TAC-09CTG2)"
+    btu: 9000
+    codigos: ["tac-09ctg2", "tac09ctg2"]
+  - id: agratto-zen-top-9k-frio
+    nome: "Agratto Zen Top 9.000 BTUs Inverter Frio (ZICST9F)"
+    btu: 9000
+    codigos: ["zicst9f", "zicst09f"]
+  - id: lg-dual-inverter-voice-9k-frio
+    nome: "LG Dual Inverter Voice 9.000 BTUs Só Frio (S3-Q09AA31F)"
+    btu: 9000
+    codigos: ["s3-q09aa31f", "s3q09aa31f"]
 
 # =============================================================================
 # PÁGINAS VIGIADAS — o coração do bot (veja docs/DECISOES.md, ADR-008).
-# O bot visita cada página 3x/dia e lê nome, preço e estoque do JSON-LD.
+# O bot visita cada página de hora em hora e lê nome, preço e estoque do JSON-LD.
 #   loja   -> nome que aparece nos avisos (obrigatório)
 #   url    -> endereço da página do produto, começando com https:// (obrigatório)
 #   modelo -> (opcional) id de um item da lista "modelos" acima. Use SÓ quando você
@@ -154,6 +188,11 @@ urls_vigiadas:
     url: "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-ai-ecomaster-springer-midea-frio/11067/sem-cor/220-volts"
   - loja: "Gazin"
     url: "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-airvolution-springer-midea-frio/10258/sem-cor/220-volts"
+  # --- Marcas novas (28/11/2026). A página da KaBuM mostra "Ciclo: Frio" e a evaporadora
+  #     "Tac-09ctg2-int". Rode o modo diagnóstico para confirmar que ela é lida.
+  - loja: "KaBuM"
+    url: "https://www.kabum.com.br/produto/651120/ar-condicionado-split-inverter-9000-btus-tcl-t-pro-2-0-high-wall-so-frio-tac-09ctg2-inv-220v"
+    modelo: tcl-tpro2-9k-frio
 
 # Lojas que incluem instalação no preço (preencha quando encontrar uma).
 # Ofertas dessas lojas passam mesmo sem frete grátis confirmado.

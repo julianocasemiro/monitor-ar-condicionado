@@ -31,9 +31,8 @@ def formatar_oferta(o) -> str:
     return linha + f"\n  <a href=\"{html.escape(o.url, quote=True)}\">abrir anúncio</a>"
 
 
-def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas,
-                    retornos=(), esgotadas=0) -> str:
-    partes = ["❄️ <b>Monitor de ar-condicionado</b>"]
+def _secoes_de_eventos(quedas, diferencas, retornos, novas) -> list:
+    partes = []
     for d in diferencas:
         partes.append(
             f"🔥 <b>DIFERENÇA GRANDE ({d['pct']:.0f}% / {_br(d['dif'])})</b>\n"
@@ -41,17 +40,40 @@ def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas,
             f"Mais barato: {_br(d['barata'].preco)} em {html.escape(d['barata'].loja)}\n"
             f"Mais caro: {_br(d['cara'].preco)} em {html.escape(d['cara'].loja)}\n"
             f"<a href=\"{html.escape(d['barata'].url, quote=True)}\">abrir oferta</a>")
-    for r in retornos:
-        partes.append("🟢 <b>VOLTOU AO ESTOQUE</b> (dentro do teto)\n" + formatar_oferta(r["oferta"]))
     for q in quedas:
         o = q["oferta"]
-        partes.append(f"📉 <b>Caiu {q['pct']:.0f}%</b>: {_br(q['anterior'])} → {_br(o.preco)}\n"
-                      + formatar_oferta(o))
+        partes.append(f"📉 <b>Caiu {q['pct']:.0f}%</b> (maior preço em 24 h: {_br(q['anterior'])}"
+                      f" → agora {_br(o.preco)})\n" + formatar_oferta(o))
+    for r in retornos:
+        partes.append("🟢 <b>VOLTOU AO ESTOQUE</b> (dentro do teto)\n" + formatar_oferta(r["oferta"]))
+    for n in novas:
+        partes.append("🆕 <b>OFERTA NOVA</b> dentro dos critérios\n" + formatar_oferta(n["oferta"]))
+    return partes
+
+
+NOTA_PRECO = ("💳 Preço lido da página da loja (em geral o do cartão). "
+              "O Pix costuma sair mais barato. Confira frete para Fortaleza no site.")
+
+
+def formatar_alertas(quedas, diferencas, retornos=(), novas=()) -> str:
+    """Mensagem curta, enviada a qualquer hora, só com os eventos."""
+    partes = ["🚨 <b>Novidade no monitor de ar-condicionado</b>"]
+    partes += _secoes_de_eventos(quedas, diferencas, retornos, novas)
+    partes.append(NOTA_PRECO)
+    return "\n\n".join(partes)
+
+
+def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas,
+                    retornos=(), esgotadas=0, novas=(),
+                    titulo="❄️ <b>Resumo diário — monitor de ar-condicionado</b>") -> str:
+    """Resumo completo, enviado uma vez por dia (e na prévia do modo --simular)."""
+    partes = [titulo]
+    partes += _secoes_de_eventos(quedas, diferencas, retornos, novas)
     if validas:
         partes.append(f"<b>{len(validas)} oferta(s) dentro dos critérios</b> (menor preço primeiro):")
         partes += [formatar_oferta(o) for o in validas[:15]]
     else:
-        partes.append("Nenhuma oferta dentro dos critérios nesta rodada.")
+        partes.append("Nenhuma oferta dentro dos critérios agora.")
     if esgotadas:
         partes.append(f"⏸️ {esgotadas} página(s) vigiada(s) sem estoque agora — aviso quando voltarem.")
     if bloqueios:
@@ -59,8 +81,7 @@ def formatar_resumo(validas, quedas, diferencas, bloqueios, nao_testadas,
                       + "\n".join(f"• {html.escape(d)}: {html.escape(m)}" for d, m in bloqueios.items()))
     if nao_testadas:
         partes.append("ℹ️ " + html.escape(nao_testadas))
-    partes.append("💳 Preço lido da página da loja (em geral o do cartão). "
-                  "O Pix costuma sair mais barato. Confira frete para Fortaleza no site.")
+    partes.append(NOTA_PRECO)
     return "\n\n".join(partes)
 
 

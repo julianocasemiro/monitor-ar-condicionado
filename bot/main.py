@@ -1,7 +1,8 @@
 """main.py — o "maestro": chama cada peça na ordem certa.
 
 Como rodar (detalhes no guia):
-  python -m bot.main               -> execução normal (vigia, avisa, salva histórico)
+  python -m bot.main               -> execução normal (vigia, avisa SÓ se houver evento, salva)
+  python -m bot.main --resumo      -> execução normal, mas manda o resumo completo agora
   python -m bot.main --simular     -> faz tudo, mas NÃO envia nada e NÃO salva (teste seguro)
   python -m bot.main --diagnostico -> testa cada página vigiada e mostra o que voltou
   python -m bot.main --testar telegram | agenda -> valida os segredos
@@ -10,6 +11,7 @@ import argparse
 import logging
 import os
 import sys
+from datetime import datetime
 from urllib.parse import urlparse
 
 import yaml
@@ -43,6 +45,13 @@ def validar_config(cfg: dict):
         if item.get("modelo") and item["modelo"] not in ids:
             raise ConfigInvalida(f"urls_vigiadas item {i}: modelo '{item['modelo']}' "
                                  "não existe na lista modelos")
+    notif = cfg.get("notificacoes") or {}
+    hora = notif.get("resumo_diario_hora")
+    if not isinstance(hora, int) or not 0 <= hora <= 23:
+        raise ConfigInvalida("notificacoes.resumo_diario_hora precisa ser um número inteiro "
+                             "de 0 a 23 (hora de Fortaleza), sem aspas")
+    if not isinstance(notif.get("falha_cronica_horas"), int | float) or notif["falha_cronica_horas"] <= 0:
+        raise ConfigInvalida("notificacoes.falha_cronica_horas precisa ser um número maior que 0")
 
 
 def segredo(nome: str) -> str:
@@ -79,7 +88,7 @@ def coletar(cliente, cfg, falhas: dict) -> list:
 
 
 # --------------------------------------------------------------------------- execução
-def executar(cfg: dict, simular: bool = False) -> int:
+def executar(cfg: dict, simular: bool = False, forcar_resumo: bool = False) -> int:
     crit = cfg["criterios"]
     cliente = ClienteEducado(cfg["educacao_http"])
     dados = historico.carregar()
@@ -106,46 +115,70 @@ def executar(cfg: dict, simular: bool = False) -> int:
     validas = regras.aplicar_regras_de_compra(aprovadas, crit,
                                               cfg.get("lojas_com_instalacao_inclusa") or [])
     urls_validas = {o.url for o in validas}
-    al = cfg["alertas"]
-    quedas = regras.detectar_quedas(validas, dados, al["queda_percentual_minima"])
+    al, notif = cfg["alertas"], cfg["notificacoes"]
+
+    # ---------- eventos (cada um só é avisado uma vez: veja as "chaves" em regras.py)
+    quedas = regras.detectar_quedas(validas, dados, al["queda_percentual_minima"],
+                                    al.get("janela_queda_horas", 24))
     retornos = regras.detectar_retornos_estoque(validas, dados)
     diferencas = [d for d in regras.detectar_diferencas(
                       [o for o in aprovadas if o.disponivel], dados,
                       al["diferenca_percentual_minima"], al["diferenca_reais_minima"])
                   if d["barata"].url in urls_validas]
+    # Primeira execução no formato novo: as ofertas atuais são registradas em silêncio,
+    # senão TODAS chegariam como "oferta nova" de uma vez.
+    primeira_vez = "validas_vistas" not in dados
+    novas = [] if primeira_vez else regras.detectar_ofertas_novas(validas, dados)
+    ja_citadas = {e["oferta"].url for e in quedas + retornos}   # evita avisar 2x a mesma página
+    novas = [n for n in novas if n["oferta"].url not in ja_citadas]
+    tem_evento = bool(quedas or retornos or diferencas or novas)
 
-    # Falhas que se repetem 3 execuções seguidas ganham um aviso para você revisar o config
-    for chave in set(list(falhas) + list(dados["falhas_por_site"])):
-        dados["falhas_por_site"][chave] = (dados["falhas_por_site"].get(chave, 0) + 1
-                                           if chave in falhas else 0)
-    cronicos = [s for s, n in dados["falhas_por_site"].items() if n >= 3]
-    nota = (f"Falharam 3+ execuções seguidas: {', '.join(cronicos)}. "
+    # ---------- falhas crônicas: medidas em HORAS (o bot agora roda de hora em hora)
+    historico.atualizar_falhas(dados, set(falhas))
+    cronicos = historico.falhas_cronicas(dados, notif["falha_cronica_horas"])
+    nota = (f"Falhando há {notif['falha_cronica_horas']} h ou mais: {', '.join(cronicos)}. "
             "Considere remover ou atualizar no config.yaml.") if cronicos else ""
 
-    mensagem = notificadores.formatar_resumo(validas, quedas, diferencas, falhas, nota,
-                                             retornos=retornos, esgotadas=esgotadas)
+    # ---------- decide QUAL mensagem sai (ou se nenhuma sai)
+    agora_local = datetime.now(regras.FORTALEZA)
+    resumo_devido = forcar_resumo or regras.resumo_diario_devido(
+        dados.get("ultimo_resumo", ""), notif["resumo_diario_hora"], agora_local)
+    resumo = notificadores.formatar_resumo(validas, quedas, diferencas, falhas, nota,
+                                           retornos=retornos, esgotadas=esgotadas, novas=novas)
+    if resumo_devido:
+        mensagem, decisao = resumo, "resumo diário"
+    elif tem_evento:
+        mensagem = notificadores.formatar_alertas(quedas, diferencas, retornos, novas)
+        decisao = "alerta de evento"
+    else:
+        mensagem, decisao = "", "nenhuma mensagem (nada relevante desde a última execução)"
+    log.info("Decisão: %s", decisao)
 
     if simular:
-        print("\n===== MENSAGEM QUE SERIA ENVIADA (modo --simular) =====\n")
-        print(mensagem)
+        print(f"\n===== DECISÃO (modo --simular): {decisao} =====\n")
+        print(mensagem or "----- prévia do resumo diário -----\n\n" + resumo)
         return 0
 
     token, chat = segredo("TELEGRAM_TOKEN"), segredo("TELEGRAM_CHAT_ID")
     if not (token and chat):
         log.error("Faltam os segredos TELEGRAM_TOKEN e/ou TELEGRAM_CHAT_ID.")
         return 2
-    notificadores.enviar_telegram(token, chat, mensagem)
+    if mensagem:
+        notificadores.enviar_telegram(token, chat, mensagem)
+    if resumo_devido:
+        dados["ultimo_resumo"] = agora_local.date().isoformat()
 
     url_agenda, seg_agenda = segredo("AGENDA_WEBHOOK_URL"), segredo("AGENDA_WEBHOOK_TOKEN")
     for d in diferencas:
         if al.get("criar_evento_agenda") and url_agenda and seg_agenda:
             notificadores.criar_evento_agenda(url_agenda, seg_agenda, d)
         historico.marcar_alertado(dados, d["chave"])
-    for alerta in quedas + retornos:
+    for alerta in quedas + retornos + novas:
         historico.marcar_alertado(dados, alerta["chave"])
     for o in aprovadas:
-        historico.registrar_preco(dados, o.url, o.preco)
+        historico.registrar_preco(dados, o.url, o.preco)      # só grava se o preço mudou
         historico.registrar_estoque(dados, o.url, o.disponivel)
+    historico.marcar_validas_vistas(dados, urls_validas)
     historico.salvar(dados)
 
     # Se NENHUMA página pôde ser lida, devolvemos erro para o GitHub marcar a execução em vermelho
@@ -214,6 +247,8 @@ def main():
     parser = argparse.ArgumentParser(description="Monitor de preços de ar-condicionado")
     parser.add_argument("--simular", action="store_true", help="não envia e não salva nada")
     parser.add_argument("--diagnostico", action="store_true", help="testa as páginas vigiadas")
+    parser.add_argument("--resumo", action="store_true",
+                        help="manda o resumo diário agora, sem esperar a hora marcada")
     parser.add_argument("--testar", choices=["telegram", "agenda"],
                         help="envia uma mensagem/evento de teste e encerra")
     parser.add_argument("--config", default="config.yaml")
@@ -225,7 +260,9 @@ def main():
     if args.testar:
         sys.exit(testar_integracoes(args.testar))
     cfg = carregar_config(args.config)
-    sys.exit(diagnosticar(cfg) if args.diagnostico else executar(cfg, simular=args.simular))
+    if args.diagnostico:
+        sys.exit(diagnosticar(cfg))
+    sys.exit(executar(cfg, simular=args.simular, forcar_resumo=args.resumo))
 
 
 if __name__ == "__main__":
