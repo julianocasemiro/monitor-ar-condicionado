@@ -1,0 +1,329 @@
+{
+ "alertas_enviados": {
+  "queda|https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts|2170": "2026-11-28T03:22:39+00:00"
+ },
+ "estoque": {
+  "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p": true,
+  "https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts": true,
+  "https://www.gazin.com.br/produto/ar-condicionado-split-g-top-auto-inverter-9000-btus-wi-fi-gree-frio/8789/sem-cor/220-volts": true,
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-ai-ecomaster-springer-midea-frio/11067/sem-cor/220-volts": true,
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-airvolution-springer-midea-frio/10258/sem-cor/220-volts": true,
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-wi-fi-gree-frio/9667/sem-cor/220-volts": true,
+  "https://www.kabum.com.br/produto/530907/ar-condicionado-split-elgin-eco-inverter-ii-wi-fi-9000-btus-frio-220v-hjfe09c2cb": false,
+  "https://www.kabum.com.br/produto/643061/ar-condicionado-inverter-gree-9000-btus-frio-220v-g-top-auto-r-32-wi-fi": false,
+  "https://www.kabum.com.br/produto/651120/ar-condicionado-split-inverter-9000-btus-tcl-t-pro-2-0-high-wall-so-frio-tac-09ctg2-inv-220v": true,
+  "https://www.kabum.com.br/produto/658141/ar-condicionado-split-hi-wall-inverter-gree-9000-btus-frio-g-top-auto-inverter-b-220v": false,
+  "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea-1777/p": false,
+  "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea/p": false,
+  "https://www.midea.com.br/ar-condicionado-split-9000-btus-ai-airvolution-frio-midea-1/p": false,
+  "https://www.midea.com.br/ar-condicionado-split-9000-btus-inverter-ai-ecomaster-pro-frio-midea/p": false
+ },
+ "falhas_desde": {},
+ "precos": {
+  "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    1979.01
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    1979.01
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    1935.03
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    1935.03
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    1935.03
+   ]
+  ],
+  "https://www.gazin.com.br/produto/ar-condicionado-9000-btus-eco-inverter-ii-connect-elgin-frio/9273/sem-cor/220-volts": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    2871.75
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    2871.75
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    2871.75
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    2871.75
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2169.9
+   ],
+   [
+    "2026-11-28T13:44:53+00:00",
+    2871.75
+   ]
+  ],
+  "https://www.gazin.com.br/produto/ar-condicionado-split-g-top-auto-inverter-9000-btus-wi-fi-gree-frio/8789/sem-cor/220-volts": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    3518.1
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    3518.1
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    3518.1
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    3518.1
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2669.9
+   ],
+   [
+    "2026-11-28T13:44:53+00:00",
+    3518.1
+   ]
+  ],
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-ai-ecomaster-springer-midea-frio/11067/sem-cor/220-volts": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    1829.9
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    1829.9
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    1829.9
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    1829.9
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    1829.9
+   ]
+  ],
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-airvolution-springer-midea-frio/10258/sem-cor/220-volts": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    3166.56
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    3166.56
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    3166.56
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    3166.56
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    3166.56
+   ]
+  ],
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-wi-fi-gree-frio/9667/sem-cor/220-volts": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    3402.78
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    3402.78
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    3402.78
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    3402.78
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    3402.78
+   ]
+  ],
+  "https://www.kabum.com.br/produto/530907/ar-condicionado-split-elgin-eco-inverter-ii-wi-fi-9000-btus-frio-220v-hjfe09c2cb": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    3756.21
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    3756.21
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    3756.21
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    3756.21
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    3756.21
+   ]
+  ],
+  "https://www.kabum.com.br/produto/643061/ar-condicionado-inverter-gree-9000-btus-frio-220v-g-top-auto-r-32-wi-fi": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    2055.72
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    2055.72
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    2055.72
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    2055.72
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2055.72
+   ]
+  ],
+  "https://www.kabum.com.br/produto/651120/ar-condicionado-split-inverter-9000-btus-tcl-t-pro-2-0-high-wall-so-frio-tac-09ctg2-inv-220v": [
+   [
+    "2026-11-28T13:44:53+00:00",
+    2886.89
+   ]
+  ],
+  "https://www.kabum.com.br/produto/658141/ar-condicionado-split-hi-wall-inverter-gree-9000-btus-frio-g-top-auto-inverter-b-220v": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    2496.6
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    2496.6
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    2496.6
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    2496.6
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2496.6
+   ]
+  ],
+  "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea-1777/p": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    2188.42
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    2188.42
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    2079.0
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    2079.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2079.0
+   ]
+  ],
+  "https://www.midea.com.br/ar-condicionado-9000-btus-inverter-ai-ecomaster-frio-midea/p": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    2188.42
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    2188.42
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    2188.42
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    2079.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2079.0
+   ]
+  ],
+  "https://www.midea.com.br/ar-condicionado-split-9000-btus-ai-airvolution-frio-midea-1/p": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    1899.0
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    1899.0
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    1899.0
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    1899.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    1899.0
+   ]
+  ],
+  "https://www.midea.com.br/ar-condicionado-split-9000-btus-inverter-ai-ecomaster-pro-frio-midea/p": [
+   [
+    "2026-11-26T02:01:34+00:00",
+    2319.0
+   ],
+   [
+    "2026-11-26T19:06:31+00:00",
+    2319.0
+   ],
+   [
+    "2026-11-27T03:41:51+00:00",
+    2319.0
+   ],
+   [
+    "2026-11-27T19:03:45+00:00",
+    2319.0
+   ],
+   [
+    "2026-11-28T03:22:39+00:00",
+    2319.0
+   ]
+  ]
+ },
+ "ultimo_resumo": "2026-11-28",
+ "validas_vistas": {
+  "https://site.fastshop.com.br/ar-condicionado-split-hw-inverter-midea-ai-airvolution-9-000-btus-r-32-so-frio-220v-192725/p": "2026-11-28T13:44:53+00:00",
+  "https://www.gazin.com.br/produto/ar-condicionado-split-inverter-9000-btus-ai-ecomaster-springer-midea-frio/11067/sem-cor/220-volts": "2026-11-28T13:44:53+00:00"
+ }
+}
