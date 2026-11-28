@@ -1,7 +1,8 @@
 # ❄️ Monitor de preços de ar-condicionado
 
 Bot que vigia páginas de produto em lojas online atrás de **ar-condicionado split inverter, só frio, 220V, 9.000 ou 12.000 BTUs**
-das marcas **Gree, Midea e Elgin**, dentro de um teto de preço. Avisa pelo **Telegram** e, quando o mesmo
+das marcas **Gree, Midea, Elgin, TCL, Agratto, Philco e LG**, dentro de um teto de preço. Roda de hora em hora e
+avisa pelo **Telegram** só quando há novidade (mais um resumo por dia); quando o mesmo
 modelo está muito mais barato numa loja do que em outra, cria um **evento no Google Agenda**.
 
 Projeto pessoal de estudo de **DevOps**: agendamento com GitHub Actions, CI com testes automáticos,
@@ -12,12 +13,12 @@ responsável na web.
 
 ```mermaid
 flowchart LR
-    A[GitHub Actions<br/>cron 3x/dia] --> B[bot Python]
+    A[GitHub Actions<br/>cron de hora em hora] --> B[bot Python]
     B -->|JSON-LD das páginas<br/>de produto vigiadas| C[(Lojas)]
     B --> D[filtros + regras]
-    D -->|resumo, quedas,<br/>diferenças| E[Telegram]
+    D -->|só eventos +<br/>resumo diário| E[Telegram]
     D -->|diferença grande| F[Web App<br/>Apps Script] --> G[Google Agenda]
-    B <-->|commit automático| H[(data/historico.json)]
+    B <-->|commit automático<br/>só quando algo muda| H[(ramo dados:<br/>data/historico.json)]
 ```
 
 ## Estrutura

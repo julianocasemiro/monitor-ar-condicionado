@@ -57,7 +57,7 @@ são comentários: **não precisam ser digitadas** (se colar junto, o PowerShell
 
 ## Etapa 1 — Como o bot pensa
 
-A cada execução (3 vezes por dia), em ordem:
+A cada execução (de hora em hora), em ordem:
 
 1. **Lê e valida o `config.yaml`** — marcas, BTUs, teto, modelos e a lista de **páginas vigiadas**.
    Se houver erro de digitação (ex.: um `modelo` que não existe), o bot para ANTES de acessar a internet.
@@ -71,14 +71,17 @@ A cada execução (3 vezes por dia), em ordem:
      encontrado na página (ex.: `midea-ai-ecomaster-9k-frio-vca`).
 5. **Aplica as regras de compra** (`bot/regras.py`): teto de R$ 2.500; só o que está em estoque; 12k só
    aparece se for mais barato que o melhor 9k da rodada.
-6. **Procura alertas:**
-   - 🟢 **Voltou ao estoque**: a página estava esgotada na rodada anterior e voltou, dentro do teto → Telegram.
-   - 📉 **Queda**: a mesma URL ficou ≥ 8% mais barata desde a última execução → Telegram.
+6. **Procura eventos** (cada um é avisado uma única vez):
+   - 📉 **Queda**: a mesma URL ficou ≥ 8% mais barata que o **maior preço das últimas 24 horas** → Telegram.
+   - 🟢 **Voltou ao estoque**: a página estava esgotada e voltou, dentro do teto → Telegram.
+   - 🆕 **Oferta nova**: uma página que nunca tinha sido oferta válida passou a ser → Telegram.
    - 🔥 **Diferença grande**: o mesmo modelo está ≥ 15% **e** ≥ R$ 250 mais barato numa loja do que em outra → Telegram **e** evento vermelho no Google Agenda.
-7. **Envia o resumo** no Telegram (até 15 ofertas, da mais barata para a mais cara), quantas páginas estão
-   esgotadas e as falhas da rodada.
-8. **Salva o histórico** (preço e estoque de cada página) em `data/historico.json`; o workflow faz commit
-   desse arquivo, para a próxima execução lembrar.
+7. **Decide se fala com você:** se houve evento, manda uma mensagem curta só com ele. Se não houve,
+   fica quieto. Uma vez por dia, a partir das 18h (campo `notificacoes.resumo_diario_hora`), manda o
+   **resumo completo**: até 15 ofertas, páginas esgotadas e falhas. O resumo é o "batimento cardíaco":
+   se ele não chegar, o bot parou.
+8. **Salva o histórico** (preço e estoque de cada página) em `data/historico.json` **no ramo `dados`**,
+   gravando só o que mudou; o workflow faz commit nesse ramo, para a próxima execução lembrar.
 
 > **Limite importante:** o bot **vigia** as páginas da lista; ele **não descobre** anúncios novos.
 > Descoberta = você + os alertas da Etapa 2. Achou um anúncio bom? Cole a URL em `urls_vigiadas`.
@@ -459,13 +462,14 @@ Para cada modo abaixo, **na ordem**:
 | 1 | `diagnostico` | Quais lojas aceitam o bot **a partir do IP do GitHub** | Compare com a Etapa 5.6 |
 | 2 | `testar_telegram` | Secrets do Telegram | Mensagem ✅ no celular |
 | 3 | `testar_agenda` | Secrets da agenda | Evento vermelho de teste |
-| 4 | `simular` | Fluxo completo sem enviar | Mensagem impressa no log |
-| 5 | `normal` | Produção | Resumo no Telegram + commit "chore(dados)..." no repositório |
+| 4 | `simular` | Fluxo completo sem enviar | Decisão + mensagem (ou prévia do resumo) no log |
+| 5 | `resumo_agora` | Produção, forçando o resumo | Resumo no Telegram + commit "chore(dados)..." no ramo `dados` |
+| 6 | `normal` | Produção | Mensagem só se houver evento |
 
-Depois disso, o bot roda **sozinho** às **06:17, 12:17 e 18:17** (horário de Fortaleza), podendo atrasar alguns minutos.
+Depois disso, o bot roda **sozinho** de hora em hora, no minuto 17, podendo atrasar alguns minutos (o GitHub não garante o horário exato e, sob carga alta, pode até pular uma execução).
 
-**Mudar a frequência perto da Black Friday:** no `monitor.yml`, troque `"17 9,15,21 * * *"` por, por exemplo,
-`"17 */3 * * *"` (a cada 3 horas). Evite menos de 2 horas: mais tráfego não melhora muito o resultado e aumenta a chance de bloqueio.
+**Frequência:** definida no `monitor.yml` (`"17 * * * *"` = de hora em hora). Não reduza abaixo de 1 hora sem
+rever o teto de requisições por loja: o User-Agent do bot promete "poucas consultas por dia", e isso precisa continuar verdadeiro.
 
 ---
 
@@ -484,7 +488,7 @@ git add config.yaml
 git commit -m "chore(config): descreva aqui o que mudou"
 git push
 ```
-- `git pull` **antes** de editar: o robô faz commits do histórico 3x/dia; sem o `pull` seu `push` é recusado.
+- `git pull` **antes** de editar: mantém sua `main` igual à do GitHub. (O robô agora grava o histórico no ramo `dados`, não na `main`.)
 - `pytest` antes do commit: se você quebrou o YAML, descobre na hora.
 
 | Campo | O que é | Quem preenche | Exemplo |
