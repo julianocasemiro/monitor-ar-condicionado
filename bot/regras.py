@@ -1,11 +1,13 @@
 """regras.py — depois de filtrar, decide o que vira aviso.
 
-Quatro tipos de saída:
-  1. Resumo: todas as ofertas válidas (vai no Telegram, ordenado por preço).
-  2. Queda: a MESMA URL ficou X% mais barata que na última execução (Telegram).
-  3. Voltou ao estoque: a página estava esgotada e voltou, dentro do teto (Telegram).
-  4. Diferença grande: o MESMO modelo custa muito menos numa loja do que em outra
-     (Telegram 🔥 + evento no Google Agenda).
+O bot roda de hora em hora, mas só manda mensagem quando há um EVENTO:
+  📉 Queda: a MESMA URL ficou X% mais barata que o MAIOR preço das últimas 24 h.
+  🟢 Voltou ao estoque: a página estava esgotada e voltou, dentro do teto.
+  🆕 Oferta nova: uma página que nunca tinha sido oferta válida passou a ser.
+  🔥 Diferença grande: o MESMO modelo custa muito menos numa loja do que em outra
+     (Telegram + evento no Google Agenda).
+Além disso, uma vez por dia sai o resumo completo ("batimento cardíaco": prova que o
+bot está vivo mesmo quando não há novidade).
 """
 from datetime import datetime, timedelta, timezone
 
@@ -41,17 +43,32 @@ def aplicar_regras_de_compra(ofertas: list, criterios: dict, lojas_instalacao: l
     return sorted(validas, key=lambda o: o.preco)
 
 
-def detectar_quedas(ofertas: list, dados: dict, queda_min_pct: float) -> list:
+def detectar_quedas(ofertas: list, dados: dict, queda_min_pct: float,
+                    janela_horas: float = 24) -> list:
+    """Compara com o MAIOR preço das últimas `janela_horas`, e não com a leitura anterior:
+    assim uma queda em degraus (3% + 3% + 3%) também é percebida."""
     quedas = []
     for o in ofertas:
-        anterior = historico.ultimo_preco(dados, o.url)
-        if not anterior or o.preco >= anterior:
+        referencia = historico.maior_preco_recente(dados, o.url, janela_horas)
+        if not referencia or o.preco >= referencia:
             continue
-        pct = (anterior - o.preco) / anterior * 100
+        pct = (referencia - o.preco) / referencia * 100
         chave = f"queda|{o.url}|{o.preco:.0f}"
         if pct >= queda_min_pct and not historico.ja_alertado(dados, chave):
-            quedas.append({"oferta": o, "anterior": anterior, "pct": pct, "chave": chave})
+            quedas.append({"oferta": o, "anterior": referencia, "pct": pct, "chave": chave})
     return quedas
+
+
+def detectar_ofertas_novas(validas: list, dados: dict) -> list:
+    """Páginas que viraram oferta válida pela primeira vez."""
+    vistas = dados.get("validas_vistas") or {}
+    return [{"oferta": o, "chave": f"nova|{o.url}"} for o in validas if o.url not in vistas]
+
+
+def resumo_diario_devido(ultimo_resumo: str, hora_resumo: int, agora_local: datetime) -> bool:
+    """True na PRIMEIRA execução do dia a partir da hora marcada.
+    "A partir de" (e não "exatamente às") porque o GitHub pode atrasar ou pular uma execução."""
+    return agora_local.hour >= hora_resumo and ultimo_resumo != agora_local.date().isoformat()
 
 
 def detectar_retornos_estoque(validas: list, dados: dict) -> list:

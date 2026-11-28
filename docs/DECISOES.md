@@ -88,6 +88,8 @@
 **Prós:** zero infraestrutura; cada mudança de preço fica auditável no histórico do Git.
 **Contras:** gera commits frequentes (ruído); não escala para milhares de produtos. Para a v2, SQLite como *artifact* ou um banco gratuito.
 
+> **Atualização (28/11/2026):** o arquivo saiu da `main` e foi para o ramo `dados` — veja o ADR-009.
+
 ---
 
 ## ADR-006 — Segredos e repositório público
@@ -148,3 +150,55 @@ propósito, para buscadores. Ler o que a loja publica para ser lido é o lado ce
 - ⚠️ Título genérico (ex.: "Ar Condicionado 9000 BTUs Inverter | Midea") não traz o código de
   fábrica → o campo `modelo` na URL resolve, e o bot avisa se a página mostrar o código de OUTRO modelo.
 - 🔜 Descoberta automática e autorizada: API oficial do Mercado Livre (v2).
+
+---
+
+## ADR-009 — De hora em hora, avisando só quando há evento; histórico no ramo `dados`
+
+**Contexto.** Com 3 execuções por dia, promoções relâmpago podiam começar e acabar entre duas leituras.
+Mas rodar mais vezes com o desenho antigo traria três problemas: (1) o resumo completo a cada execução
+viraria ruído e o usuário silenciaria o bot; (2) o alerta de queda comparava com a leitura **anterior**,
+então quedas em degraus (3% + 3% + 3%) nunca passariam de 8%; (3) cada execução fazia commit do histórico
+na `main`, o que impedia proteger a `main`.
+
+**Decisão.**
+- Cron de hora em hora (`17 * * * *`).
+- Mensagem **só por evento**: 📉 queda, 🟢 volta ao estoque, 🆕 oferta nova, 🔥 diferença grande. Cada evento
+  tem uma "chave" e é avisado uma única vez (idempotência).
+- **Resumo diário** a partir de `notificacoes.resumo_diario_hora` (padrão 18h), na primeira execução do dia
+  depois dessa hora — é o *heartbeat*: o silêncio do resto do dia fica inequívoco.
+- Queda medida contra o **maior preço em vigor nas últimas 24 h**.
+- Histórico no ramo **`dados`** (aberto com `git worktree` no workflow) e gravando **só mudanças**: preço
+  igual não gera ponto novo; falhas guardam "desde quando" em vez de um contador. Resultado: commit só
+  quando algo muda de fato.
+- Na primeira execução no formato novo, as ofertas atuais são registradas em silêncio (senão todas
+  chegariam como "oferta nova").
+
+**Consequências.**
+- ✅ A `main` passa a ter só código e pode ser protegida (exigir PR com CI verde).
+- ✅ ~24 execuções/dia continuam gratuitas (repositório público, runner padrão).
+- ⚠️ Cada loja recebe mais visitas por dia. Continua pouco (teto por execução, 10 s entre pedidos),
+  mas é o limite para o User-Agent seguir verdadeiro ao dizer "poucas consultas por dia".
+- ⚠️ O agendamento do GitHub é "melhor esforço": pode atrasar ou pular execuções em horário de pico.
+
+---
+
+## ADR-010 — Inclusão de TCL, Agratto, Philco e LG
+
+**Contexto.** Ampliar as marcas para aumentar a chance de oferta, sem abrir mão de reputação.
+Pesquisa de 28/11/2026 (Reclame Aqui e preços de 9.000 BTUs inverter só frio 220V no varejo):
+
+| Marca | Evidência | Decisão |
+|---|---|---|
+| TCL (TCL SEMP) | RA1000, nota 8,3, 100% respondidas, 90,9% resolvidas (1º sem. 2026); nota do consumidor 7,05 | Incluída |
+| Agratto (Ventisol) | Presente no Guia Reclame Aqui 2026 (92% de solução) | Incluída |
+| Philco (Britânia) | Dados conflitantes entre fontes secundárias | Incluída, com cautela |
+| LG | Produto bem avaliado; a *loja online* da LG está "Não recomendada" no Reclame Aqui | Incluída (comprar por outra loja) |
+| Samsung | "Samsung Oficial" Não recomendada; modelo visto acima do teto | Fora |
+
+**Decisão.** As quatro entram em `criterios.marcas`. Códigos quente/frio confirmados em anúncios
+(`chtg2` TCL, `cst9qf` Agratto) entram em `codigos_quente_frio`. A Philco **não** ganha código: o mesmo
+código (PAC9FB) aparece como "frio" num anúncio e "quente/frio" em outro.
+
+**Consequências.** Marca nova sozinha não traz oferta: o bot só vê as páginas da lista. Cada página nova
+precisa passar pelo modo diagnóstico, e cada `modelo` novo precisa do código conferido no fabricante.

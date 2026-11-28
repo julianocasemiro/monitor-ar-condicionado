@@ -6,19 +6,20 @@ name: Monitor de preços
 
 on:
   schedule:
-    # Cron em UTC. Fortaleza = UTC-3. 09:17 UTC = 06:17 em Fortaleza, etc.
+    # Cron em UTC. De hora em hora, no minuto 17 (Fortaleza = UTC-3, o minuto é o mesmo).
     # Minuto 17 de propósito: na virada da hora o GitHub fica mais carregado e atrasa.
-    - cron: "17 9,15,21 * * *"
+    # O bot só manda mensagem quando há evento; o resumo completo sai 1x/dia (config.yaml).
+    - cron: "17 * * * *"
   workflow_dispatch:        # cria o botão "Run workflow" para rodar na mão
     inputs:
       modo:
         description: "O que fazer nesta execução manual"
         default: "normal"
         type: choice
-        options: [normal, simular, diagnostico, testar_telegram, testar_agenda]
+        options: [normal, resumo_agora, simular, diagnostico, testar_telegram, testar_agenda]
 
 permissions:
-  contents: write           # precisa escrever no repositório para salvar o histórico
+  contents: write           # precisa escrever no ramo "dados" para salvar o histórico
 
 concurrency:                # nunca deixa duas execuções rodarem ao mesmo tempo
   group: monitor-precos
@@ -41,15 +42,40 @@ jobs:
       - name: Instalar dependências
         run: pip install -r requirements.txt
 
+      - name: Preparar o histórico (ramo "dados")
+        # O histórico mora num ramo SEPARADO do código (docs/DECISOES.md, ADR-009):
+        # a main fica só com código e pode ser protegida.
+        # "git worktree" abre o ramo dados na pasta .dados, ao lado do código da main.
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin dados > /dev/null; then
+            git fetch --depth=1 origin dados
+            git worktree add --detach .dados FETCH_HEAD
+          else
+            codigo=$?
+            # 2 = o ramo não existe. Qualquer outro código é erro de rede: para aqui.
+            if [ "$codigo" -ne 2 ]; then exit "$codigo"; fi
+            echo "Ramo dados ainda não existe: criando a partir do histórico atual da main."
+            git worktree add --detach .dados HEAD
+            cd .dados
+            git checkout --orphan dados
+            git rm -rfq .
+            mkdir -p data
+            if [ -f ../data/historico.json ]; then cp ../data/historico.json data/; fi
+          fi
+
       - name: Rodar o bot
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           AGENDA_WEBHOOK_URL: ${{ secrets.AGENDA_WEBHOOK_URL }}
           AGENDA_WEBHOOK_TOKEN: ${{ secrets.AGENDA_WEBHOOK_TOKEN }}
+          HISTORICO_ARQUIVO: .dados/data/historico.json
           MODO: ${{ github.event.inputs.modo || 'normal' }}
         run: |
           case "$MODO" in
+            resumo_agora) python -m bot.main --resumo ;;
             simular)     python -m bot.main --simular ;;
             diagnostico) python -m bot.main --diagnostico ;;
             testar_telegram) python -m bot.main --testar telegram ;;
@@ -57,17 +83,16 @@ jobs:
             *)           python -m bot.main ;;
           esac
 
-      - name: Salvar o histórico de preços no repositório
-        # Só salva em execução normal (agendada, ou manual no modo 'normal')
-        if: ${{ !github.event.inputs.modo || github.event.inputs.modo == 'normal' }}
+      - name: Salvar o histórico no ramo "dados"
+        # Só salva em execução normal (agendada, ou manual nos modos normal / resumo_agora).
+        # Como o bot só grava MUDANÇAS, na maioria das horas não há commit nenhum.
+        if: ${{ !github.event.inputs.modo || github.event.inputs.modo == 'normal' || github.event.inputs.modo == 'resumo_agora' }}
+        working-directory: .dados
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/
           if git diff --cached --quiet; then
             echo "Nada mudou no histórico."
           else
-            git commit -m "chore(dados): atualiza histórico de preços"
-            git pull --rebase
-            git push
+            git commit -q -m "chore(dados): atualiza histórico de preços"
+            git push origin HEAD:refs/heads/dados
           fi
